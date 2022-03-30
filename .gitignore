@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+_site
+.sass-cache
+.jekyll-cache
+.jekyll-metadata
+vendor

@@ -1,2 +1,1 @@
-# pdi
-Processamento Digital de Imagens
+# Processamento Digital de Imagens
