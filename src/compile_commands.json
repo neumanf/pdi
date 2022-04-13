@@ -1,0 +1,7 @@
+[
+    {
+        "directory": "/home/newman/Projects/pdi/src",
+        "command": "/usr/bin/clang++  -isystem /usr/include/opencv4  -o CMakeFiles/hello.dir/hello.cpp.o -c /home/newman/Projects/pdi/src/hello.cpp",
+        "file": "/home/newman/Projects/pdi/src/hello.cpp"
+    }
+]
