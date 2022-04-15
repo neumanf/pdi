@@ -90,3 +90,80 @@ Obtemos a seguinte imagem:
 
 ![Imagem processada](../src/exercises/1/output_regions.png)
 *Imagem processada*
+
+## Exercício 1.2
+
+### Objetivo
+
+Utilizando o programa `exemplos/pixels.cpp` como referência, implemente um programa `trocaregioes.cpp`. Seu programa deverá trocar os quadrantes em diagonal na imagem. Explore o uso da classe Mat e seus construtores para criar as regiões que serão trocadas.
+
+### Implementação
+
+Assim como no exercício 1.1, primeiramente lemos a imagem em disco, verificamos se a operação foi executada corretamente e obtemos suas dimensões.
+
+`trocaregioes.cpp`
+{% highlight cpp %}
+[...]
+cv::Mat image =
+    cv::imread("../assets/images/mountain.png", cv::IMREAD_GRAYSCALE);
+
+int imageWidth = image.size().width;
+int imageHeight = image.size().height;
+
+if (!image.data)
+    std::cout << "Error while opening the image.\n";
+[...]
+{% endhighlight %}
+
+Então, geramos uma nova matriz composta de zeros, de mesma dimensão e tipo da imagem fornecida, por meio do método `zeros()`. De posse dela, percorremos cada quadrante da imagem original, com base em sua altura e largura, e atribuimos cada valor ao quadrante inverso na nova matriz `newImage`.
+
+Os quadrantes podem ser definidos dividindo a imagem 4 partes, levando em consideração os pontos `(0,0)`, `(largura/2, altura/2)`, `(largura, altura)` e suas variações.
+
+`trocaregioes.cpp`
+{% highlight cpp %}
+[...]
+cv::Mat newImage = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
+
+// First quadrant
+for (int i = 0; i < imageHeight / 2; i++) {
+    for (int j = 0; j < imageWidth / 2; j++) {
+        newImage.at<uchar>(imageHeight / 2 + i, imageWidth / 2 + j) =
+            image.at<uchar>(i, j);
+    }
+}
+
+// Second quadrant
+for (int i = 0; i < imageHeight / 2; i++) {
+    for (int j = imageWidth / 2; j < imageWidth; j++) {
+        newImage.at<uchar>(imageHeight / 2 + i - 1, imageWidth / 2 + j) =
+            image.at<uchar>(i, j);
+    }
+}
+
+// Third quadrant
+for (int i = imageHeight / 2; i < imageHeight; i++) {
+    for (int j = 0; j < imageWidth / 2; j++) {
+        newImage.at<uchar>(i - imageHeight / 2, j + imageWidth / 2) =
+            image.at<uchar>(i, j);
+    }
+}
+
+// Forth quadrant
+for (int i = imageHeight / 2; i < imageHeight; i++) {
+    for (int j = imageWidth / 2; j < imageWidth; j++) {
+        newImage.at<uchar>(i - imageHeight / 2, j - imageWidth / 2) =
+            image.at<uchar>(i, j);
+    }
+}
+[...]
+{% endhighlight %}
+
+### Resultados
+
+![Imagem original](../assets/images/mountain.png)
+*Imagem original (mountain.png)*
+
+Após a execução do programa, obtemos a seguinte imagem:
+
+![Imagem processada](../src/exercises/1/output_trocaregioes.png)
+*Imagem processada*
