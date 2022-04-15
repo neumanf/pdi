@@ -17,6 +17,18 @@ bool isAValidPoint(Point point, cv::Size imageSize) {
     return true;
 }
 
+struct Point getPointCoordinates(std::string pointName) {
+    struct Point point;
+
+    std::cout << "\n> Point " << pointName << " coordinates\n";
+    std::cout << "x: ";
+    std::cin >> point.x;
+    std::cout << "y: ";
+    std::cin >> point.y;
+
+    return point;
+}
+
 int main(int argc, char **argv) {
     cv::Mat image =
         cv::imread("../assets/images/mountain.png", cv::IMREAD_GRAYSCALE);
@@ -28,20 +40,8 @@ int main(int argc, char **argv) {
 
     cv::Size imageSize = image.size();
 
-    struct Point p1;
-    struct Point p2;
-
-    std::cout << "> Point 1 coordinates\n";
-    std::cout << "x: ";
-    std::cin >> p1.x;
-    std::cout << "y: ";
-    std::cin >> p1.y;
-
-    std::cout << "\n> Point 2 coordinates\n";
-    std::cout << "x: ";
-    std::cin >> p2.x;
-    std::cout << "y: ";
-    std::cin >> p2.y;
+    struct Point p1 = getPointCoordinates("1");
+    struct Point p2 = getPointCoordinates("2");
 
     if (!isAValidPoint(p1, imageSize)) {
         std::cout << "Invalid coordinates for point P1.\n";
