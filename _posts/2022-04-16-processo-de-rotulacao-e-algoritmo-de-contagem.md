@@ -33,11 +33,11 @@ A fim de detectar bolhas que tocam as bordas da imagem, foi percorrida toda a im
 [...]
 // remove objetos que tocam na borda
 for (int i = 0; i < height; i++) {
-for (int j = 0; j < width; j++) {
-// se o pixel não for um pixel de borda, continue
-if ((i > 0 && i < height - 1) && (j > 0 && j < width - 1)) {
-continue;
-}
+    for (int j = 0; j < width; j++) {
+        // se o pixel não for um pixel de borda, continue
+        if ((i > 0 && i < height - 1) && (j > 0 && j < width - 1)) {
+            continue;
+        }
 
         p.x = j;
         p.y = i;
@@ -47,7 +47,6 @@ continue;
             cv::floodFill(image, p, 0);
         }
     }
-
 }
 [...]
 {% endhighlight %}
@@ -67,14 +66,14 @@ floodFill(image, p, 1);
 // conta quantas bolhas existem
 int numberOfObjects = 0;
 for (int i = 0; i < height; i++) {
-for (int j = 0; j < width; j++) {
-if (image.at<uchar>(i, j) == 255) {
-numberOfObjects++;
-p.x = j;
-p.y = i;
-floodFill(image, p, 100);
-}
-}
+    for (int j = 0; j < width; j++) {
+        if (image.at<uchar>(i, j) == 255) {
+            numberOfObjects++;
+            p.x = j;
+            p.y = i;
+            floodFill(image, p, 100);
+        }
+    }
 }
 [...]
 {% endhighlight %}
@@ -91,17 +90,17 @@ p.y = 0;
 // conta quantas bolhas com buracos existem
 int numberOfObjectsWithHoles = 0;
 for (int i = 0; i < height; i++) {
-for (int j = 0; j < width; j++) {
-if (image.at<uchar>(i, j) == 0 &&
-image.at<uchar>(i, j - 1) == 100) {
-numberOfObjectsWithHoles++;
-p.x = j;
-p.y = i;
-floodFill(image, p, 150);
-p.x = j - 1;
-floodFill(image, p, 50);
-}
-}
+    for (int j = 0; j < width; j++) {
+        if (image.at<uchar>(i, j) == 0 &&
+            image.at<uchar>(i, j - 1) == 100) {
+            numberOfObjectsWithHoles++;
+            p.x = j;
+            p.y = i;
+            floodFill(image, p, 150);
+            p.x = j - 1;
+            floodFill(image, p, 50);
+        }
+    }
 }
 [...]
 {% endhighlight %}
