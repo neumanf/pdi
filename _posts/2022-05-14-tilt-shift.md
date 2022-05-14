@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "[EX-05] Tilt Shift"
+title: "[EX-05] Tilt-shift em imagens e vídeos"
 author: neumanf
 date: 2022-05-14 09:00:00 +0000
 categories: pdi
@@ -100,3 +100,71 @@ O resultado é a seguinte imagem:
 
 ![Imagem filtrada](../src/exercises/5/raw_output.png)
 _Imagem filtrada_
+
+## Exercício 5.2
+
+### Objetivo
+
+Utilizando o programa `exemplos/addweighted.cpp` como referência, implemente um programa `tiltshiftvideo.cpp`. Tal programa deverá ser capaz de processar um arquivo de vídeo, produzir o efeito de tilt-shift nos quadros presentes e escrever o resultado em outro arquivo de vídeo. A ideia é criar um efeito de miniaturização de cenas. Descarte quadros em uma taxa que julgar conveniente para evidenciar o efeito de stop motion, comum em vídeos desse tipo.
+
+### Implementação
+
+A fim de processar cada frame do vídeo e exportá-los para um novo arquivo, foram utilizadas as classes `VideoCapture` e `VideoWriter` do OpenCV. Para o vídeo resultante, além de seu nome, formato e tamanho, também foi lhe atribuido a taxa de quadros de 15 FPS, com o objetivo de recriar o efeito de stop motion.
+
+`tiltshiftvideo.cpp`
+{% highlight cpp linenos %}
+[...]
+cv::VideoCapture cap("./exercises/5/norway.mp4");
+int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+cv::VideoWriter output("./exercises/5/norway_output.avi",
+                        cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 15,
+                        cv::Size(frameWidth, frameHeight));
+[...]
+{% endhighlight %}
+
+Similarmente ao processo realizado em `tiltshift.cpp`, o filtro da média foi aplicado a cada frame. Com o intuito de intensificar o borramento, o filtro foi aplicado mais 5 vezes, como mostrado nas linhas `L12-L15`.
+
+Em seguida, foi efetuada a ponderação (dessa vez com valores pré-definidos, pois não há sliders) e a escrita do frame no arquivo de vídeo final.
+
+`tiltshiftvideo.cpp`
+{% highlight cpp linenos %}
+[...]
+while (1) {
+    cv::Mat frame, filteredFrame, frameTop;
+    cap >> frame;
+
+    if (frame.empty()) {
+        break;
+    }
+
+    cv::filter2D(frame, filteredFrame, frame.depth(), mask, cv::Point(1, 1),
+                    0);
+    for (int i = 0; i < 5; i++) {
+        cv::filter2D(filteredFrame, filteredFrame, frame.depth(), mask,
+                        cv::Point(1, 1), 0);
+    }
+    filteredFrame.copyTo(frameTop);
+
+    for (int i = 0; i < filteredFrame.rows; i++) {
+        double d = 100.0;
+        double l1 = -200.0 + round(frame.size().height / 2);
+        double l2 = 200.0 + round(frame.size().height / 2);
+        double alpha = (0.5) * (tanh((i - l1) / d) - tanh((i - l2) / d));
+
+        addWeighted(frame.row(i), alpha, frameTop.row(i), 1 - alpha, 0,
+                    filteredFrame.row(i));
+    }
+
+    output.write(filteredFrame);
+}
+[...]
+{% endhighlight %}
+
+### Resultados
+
+**Video original**
+<iframe width="854" height="480" src="https://www.youtube.com/embed/q54EgS8sdYQ" frameborder="0" allowfullscreen></iframe>
+
+**Video com efeito Tilt-shift**
+<iframe width="854" height="480" src="https://www.youtube.com/embed/ubLREjGYT5Y" frameborder="0" allowfullscreen></iframe>
