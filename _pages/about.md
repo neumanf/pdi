@@ -4,4 +4,6 @@ title: Sobre
 permalink: /about/
 ---
 
-Resolução de exercícios da disciplina de Processamento Digital de Sinais - PDI.
+Resoluções de exercícios da disciplina Processamento Digital de Sinais - PDI.
+
+O código fonte completo de cada exercício encontra-se disponível em [https://github.com/neumanf/pdi/tree/main/src/exercises](https://github.com/neumanf/pdi/tree/main/src/exercises)
