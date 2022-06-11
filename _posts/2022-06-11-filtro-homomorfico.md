@@ -1,7 +1,24 @@
-#include <iostream>
-#include <opencv2/opencv.hpp>
-#include <vector>
+---
+layout: post
+title:  "[EX-06] Filtro Homomófico"
+author: neumanf
+date:   2022-06-11 10:00:00 +0000
+categories: pdi
+---
 
+## Exercício 6
+
+### Objetivo
+
+Utilizando o programa `exemplos/dft.cpp` como referência, implemente o filtro homomórfico para melhorar imagens com iluminação irregular. Crie uma cena mal iluminada e ajuste os parâmetros do filtro homomórfico para corrigir a iluminação da melhor forma possível. Assuma que a imagem fornecida é em tons de cinza.
+
+### Implementação
+
+Primeiramente, definimos variáveis globais para armazenar a imagem inicial, os valores dos filtros e seus valores iniciais e máximos de suas _trackbars_.
+
+`homomorphic_filter.cpp`
+{% highlight cpp %}
+[...]
 cv::Mat image;
 
 // valores utilizados no filtro e trackbars
@@ -9,36 +26,56 @@ float gammaH = 0, gammaL = 0, c = 0, d0 = 0;
 float gammaHMax = 100, gammaLMax = 100, cMax = 250, d0Max = 100,
       trackbarMax = 100;
 int gammaHSlider = 0, gammaLSlider = 0, cSlider = 0, d0Slider = 0;
+[...]
+{% endhighlight %}
 
-// troca os quadrantes da imagem da DFT
-void swapImageQuadrants(cv::Mat &image) {
-    cv::Mat tmp, A, B, C, D;
+Na função principal, carregamos a imagem original, a convertemos para escala de cinza,  criamos a janela e as _trackbars_ responsáveis por mudar as variáveis do filtro homomórfico.
 
-    // se a imagem tiver tamanho impar, recorta a regiao para
-    // evitar cópias de tamanho desigual
-    image = image(cv::Rect(0, 0, image.cols & -2, image.rows & -2));
-    int cx = image.cols / 2;
-    int cy = image.rows / 2;
+`homomorphic_filter.cpp`
+{% highlight cpp %}
+[...]
+int main(int, char **) {
+    char trackbarName[50];
 
-    // reorganiza os quadrantes da transformada
-    // A B   ->  D C
-    // C D       B A
-    A = image(cv::Rect(0, 0, cx, cy));
-    B = image(cv::Rect(cx, 0, cx, cy));
-    C = image(cv::Rect(0, cy, cx, cy));
-    D = image(cv::Rect(cx, cy, cx, cy));
+    // carrega a imagem e a converte para escala de cinza
+    image = cv::imread("./exercises/6/forest.jpg");
+    cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
 
-    // A <-> D
-    A.copyTo(tmp);
-    D.copyTo(A);
-    tmp.copyTo(D);
+    cv::namedWindow("Filtro Homomorfico");
 
-    // C <-> B
-    C.copyTo(tmp);
-    B.copyTo(C);
-    tmp.copyTo(B);
+    // configura as trackbars
+    sprintf(trackbarName, "gamma_H");
+    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &gammaHSlider,
+                       trackbarMax, on_trackbar_gamma_h);
+
+    sprintf(trackbarName, "gamma_L");
+    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &gammaLSlider,
+                       trackbarMax, on_trackbar_gamma_l);
+
+    sprintf(trackbarName, "C");
+    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &cSlider,
+                       trackbarMax, on_trackbar_c);
+
+    sprintf(trackbarName, "D0");
+    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &d0Slider,
+                       trackbarMax, on_trackbar_d0);
+
+    homomorphicFilter();
+
+    cv::waitKey(0);
+
+    return 0;
 }
+[...]
+{% endhighlight %}
 
+A função `homomorphicFilter` descreve o filtro homomórfico, baseando-se na implementação de `dft.cpp`. A característica que as diferenciam é a troca do filtro passa-baixas ideal para o filtro homomórfico, que deriva da equação a seguir:
+
+![equacao](https://i.stack.imgur.com/VSKA5.png)
+
+`homomorphic_filter.cpp`
+{% highlight cpp %}
+[...]
 void homomorphicFilter() {
     cv::Mat imaginaryInput, complexImage, multsp;
     cv::Mat padded, filter, mag;
@@ -143,57 +180,15 @@ void homomorphicFilter() {
 
     cv::imshow("Filtro Homomorfico", planos[0]);
 }
+[...]
+{% endhighlight %}
 
-void on_trackbar_gamma_h(int, void *) {
-    gammaH = gammaHSlider * gammaHMax / trackbarMax;
-    homomorphicFilter();
-}
+### Resultados
 
-void on_trackbar_gamma_l(int, void *) {
-    gammaL = (float)gammaLSlider;
-    gammaL = gammaLMax * gammaL / trackbarMax;
-    homomorphicFilter();
-}
+![Imagem original](../src/exercises/6/forest.jpg)
+*Imagem original*
 
-void on_trackbar_c(int, void *) {
-    c = cSlider * cMax / trackbarMax;
-    homomorphicFilter();
-}
+Escolhendo os valores `gammaH = 25`, `gammaL = 10`, `C = 25` e `D0 = 35`, através dos _sliders_, obtemos a seguinte imagem:
 
-void on_trackbar_d0(int, void *) {
-    d0 = d0Slider * d0Max / trackbarMax;
-    homomorphicFilter();
-}
-
-int main(int, char **) {
-    char trackbarName[50];
-
-    // carrega a imagem e a converte para escala de cinza
-    image = cv::imread("./exercises/6/forest.jpg");
-    cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
-
-    cv::namedWindow("Filtro Homomorfico");
-
-    // configura as trackbars
-    sprintf(trackbarName, "gamma_H");
-    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &gammaHSlider,
-                       trackbarMax, on_trackbar_gamma_h);
-
-    sprintf(trackbarName, "gamma_L");
-    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &gammaLSlider,
-                       trackbarMax, on_trackbar_gamma_l);
-
-    sprintf(trackbarName, "C");
-    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &cSlider,
-                       trackbarMax, on_trackbar_c);
-
-    sprintf(trackbarName, "D0");
-    cv::createTrackbar(trackbarName, "Filtro Homomorfico", &d0Slider,
-                       trackbarMax, on_trackbar_d0);
-
-    homomorphicFilter();
-
-    cv::waitKey(0);
-
-    return 0;
-}
+![Imagem filtrada](../src/exercises/6/output.png)
+*Imagem filtrada com o filtro homomórfico*
