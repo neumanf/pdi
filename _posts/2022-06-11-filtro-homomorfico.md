@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[EX-06] Filtro Homomófico"
+title:  "[EX-06] Filtro Homomórfico"
 author: neumanf
 date:   2022-06-11 10:00:00 +0000
 categories: pdi
