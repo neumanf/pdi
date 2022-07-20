@@ -39,3 +39,4 @@ vendor
 
 src/.cache
 src/build/*
+build
