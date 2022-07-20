@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>[EX-02] Processo de rotulação e algoritmo de contagem | Processamento Digital de Sinais</title>
+<meta name="generator" content="Jekyll v4.2.2" />
+<meta property="og:title" content="[EX-02] Processo de rotulação e algoritmo de contagem" />
+<meta name="author" content="neumanf" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Exercício 2.1" />
+<meta property="og:description" content="Exercício 2.1" />
+<link rel="canonical" href="https://neumanf.github.io/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem" />
+<meta property="og:url" content="https://neumanf.github.io/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem" />
+<meta property="og:site_name" content="Processamento Digital de Sinais" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-04-16T09:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="[EX-02] Processo de rotulação e algoritmo de contagem" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"neumanf"},"dateModified":"2022-04-16T09:00:00+00:00","datePublished":"2022-04-16T09:00:00+00:00","description":"Exercício 2.1","headline":"[EX-02] Processo de rotulação e algoritmo de contagem","mainEntityOfPage":{"@type":"WebPage","@id":"https://neumanf.github.io/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem"},"url":"https://neumanf.github.io/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/pdi/assets/main.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Libre+Baskerville:400,400i,700">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/pdi/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/pdi/assets/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/pdi/assets/apple-touch-icon.png">
+
+  <!-- RSS -->
+  <link type="application/atom+xml" rel="alternate" href="https://neumanf.github.io/pdi/feed.xml" title="Processamento Digital de Sinais" />
+
+  <!-- Google Analytics-->
+  
+</head>
+
+
+  <body>
+
+    <nav class="nav">
+  <div class="nav-container">
+    <a href="/pdi/">
+      <h2 class="nav-title">Processamento Digital de Sinais</h2>
+    </a>
+    <ul>
+      <li><a href="/pdi/">Posts</a></li>
+      <li><a href="/pdi/tags">Tags</a></li>
+      <li><a href="/pdi/about">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+
+    <main>
+      <div class="post">
+  <div class="post-info">
+    <span>Written by</span>
+    
+        neumanf
+    
+
+    
+      <br>
+      <span>on&nbsp;</span><time datetime="2022-04-16 09:00:00 +0000">April 16, 2022</time>
+    
+  </div>
+
+  <h1 class="post-title">[EX-02] Processo de rotulação e algoritmo de contagem</h1>
+  <div class="post-line"></div>
+
+  <h2 id="exercício-21">Exercício 2.1</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Observando-se o programa <code class="language-plaintext highlighter-rouge">labeling.cpp</code> como exemplo, é possível verificar que caso existam mais de 255 objetos na cena, o processo de rotulação poderá ficar comprometido. Identifique a situação em que isso ocorre e proponha uma solução para este problema.</p>
+
+<h3 id="solução">Solução</h3>
+
+<p>O problema ocorre devido ao fato do algoritmo usar a variável que conta a quantidade de objetos, <code class="language-plaintext highlighter-rouge">nobjects</code>, como tonalidade de cinza a ser preenchida pelo <code class="language-plaintext highlighter-rouge">floodFill()</code>, assim, como 255 é o número máximo representável com 8 bits do tipo <code class="language-plaintext highlighter-rouge">uchar</code>, com uma quantidade de objetos maior que essa, o algoritmo irá gerar um resultado errôneo.</p>
+
+<p>Uma possível solução é utilizar o tipo <code class="language-plaintext highlighter-rouge">int</code>, ao invés do tipo <code class="language-plaintext highlighter-rouge">uchar</code>, assim será possível contar muito mais objetos na cena.</p>
+
+<h2 id="exercício-22">Exercício 2.2</h2>
+
+<h3 id="objetivo-1">Objetivo</h3>
+
+<p>Aprimore o algoritmo de contagem apresentado para identificar regiões com ou sem buracos internos que existam na cena. Assuma que objetos com mais de um buraco podem existir. Inclua suporte no seu algoritmo para não contar bolhas que tocam as bordas da imagem. Não se pode presumir, a priori, que elas tenham buracos ou não.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>A fim de detectar bolhas que tocam as bordas da imagem, foi percorrida toda a imagem, e caso houvesse um pixel de cor branca, simbolizando uma bolha, foi utilizado o algoritmo de <code class="language-plaintext highlighter-rouge">floodFill</code> para preencher a bolha com a cor do fundo (preto).</p>
+
+<p><code class="language-plaintext highlighter-rouge">labeling.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="c1">// remove objetos que tocam na borda</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// se o pixel não for um pixel de borda, continue</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">j</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span><span class="p">;</span>
+        <span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+
+        <span class="c1">// se houver uma bolha, a remove</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">==</span> <span class="mi">255</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">cv</span><span class="o">::</span><span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Então, resetamos o ponto que itera sobre a imagem e mudamos a cor de fundo, para que não sejam contados mais de um buraco em cada bolha. Contamos, portanto, o número de bolhas, iterando sobre a imagem e checando se o pixel possui cor branca, se sim, pintamos a bolha com uma tonalidade de cinza padrão.</p>
+
+<p><code class="language-plaintext highlighter-rouge">labeling.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="c1">// reseta o ponto</span>
+<span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// muda a cor do fundo</span>
+<span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+
+<span class="c1">// conta quantas bolhas existem</span>
+<span class="kt">int</span> <span class="n">numberOfObjects</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">==</span> <span class="mi">255</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">numberOfObjects</span><span class="o">++</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+            <span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Por fim, para contar quantas bolhas com buracos existem, percorremos a imagem e checamos se cada pixel possui cor preta e seu vizinho possui a cor de uma bolha. Se sim, uma bolha com buraco foi encontrada. Usamos o pixel em questão e seu vizinho para pintar suas áreas com cores não usadas anteriormente.</p>
+
+<p><code class="language-plaintext highlighter-rouge">labeling.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="c1">// reseta o ponto</span>
+<span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// conta quantas bolhas com buracos existem</span>
+<span class="kt">int</span> <span class="n">numberOfObjectsWithHoles</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">100</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">numberOfObjectsWithHoles</span><span class="o">++</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+            <span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">150</span><span class="p">);</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+            <span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">50</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p>A imagem original foi modificada, adicionando um buraco a mais a uma bolha que já havia um.</p>
+
+<p><img src="../src/exercises/2/bolhas.png" alt="Imagem original" />
+<em>Imagem original</em></p>
+
+<p>Depois de executado, obtemos</p>
+
+<p><code class="language-plaintext highlighter-rouge">output</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>256x256
+a figura tem 21 bolhas e 7 bolhas com buracos.
+</code></pre></div></div>
+
+<p><img src="../src/exercises/2/output_after_border_removal.png" alt="Imagem após remover as bolhas das bordas" />
+<em>Imagem após remover as bolhas das bordas</em></p>
+
+<p><img src="../src/exercises/2/output.png" alt="Imagem resultante" />
+<em>Imagem resultante</em></p>
+
+</div>
+
+
+
+<div class="pagination">
+  
+    <a href="/pdi/2022-04-22/equalizacao-e-deteccao-de-movimento" class="left arrow">&#8592;</a>
+  
+  
+    <a href="/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes" class="right arrow">&#8594;</a>
+  
+
+  <a href="#" class="top">Top</a>
+</div>
+    </main>
+
+    <footer>
+  <span>
+    &copy; <time datetime="2022-07-20 22:34:23 +0000">2022</time> . Made with Jekyll using the <a href="https://github.com/chesterhow/tale/">Tale</a> theme.
+  </span>
+</footer>
+
+  </body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>[EX-01] Região negativa e troca de regiões | Processamento Digital de Sinais</title>
+<meta name="generator" content="Jekyll v4.2.2" />
+<meta property="og:title" content="[EX-01] Região negativa e troca de regiões" />
+<meta name="author" content="neumanf" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Exercício 1.1" />
+<meta property="og:description" content="Exercício 1.1" />
+<link rel="canonical" href="https://neumanf.github.io/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes" />
+<meta property="og:url" content="https://neumanf.github.io/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes" />
+<meta property="og:site_name" content="Processamento Digital de Sinais" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-04-15T15:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="[EX-01] Região negativa e troca de regiões" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"neumanf"},"dateModified":"2022-04-15T15:00:00+00:00","datePublished":"2022-04-15T15:00:00+00:00","description":"Exercício 1.1","headline":"[EX-01] Região negativa e troca de regiões","mainEntityOfPage":{"@type":"WebPage","@id":"https://neumanf.github.io/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes"},"url":"https://neumanf.github.io/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/pdi/assets/main.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Libre+Baskerville:400,400i,700">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/pdi/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/pdi/assets/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/pdi/assets/apple-touch-icon.png">
+
+  <!-- RSS -->
+  <link type="application/atom+xml" rel="alternate" href="https://neumanf.github.io/pdi/feed.xml" title="Processamento Digital de Sinais" />
+
+  <!-- Google Analytics-->
+  
+</head>
+
+
+  <body>
+
+    <nav class="nav">
+  <div class="nav-container">
+    <a href="/pdi/">
+      <h2 class="nav-title">Processamento Digital de Sinais</h2>
+    </a>
+    <ul>
+      <li><a href="/pdi/">Posts</a></li>
+      <li><a href="/pdi/tags">Tags</a></li>
+      <li><a href="/pdi/about">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+
+    <main>
+      <div class="post">
+  <div class="post-info">
+    <span>Written by</span>
+    
+        neumanf
+    
+
+    
+      <br>
+      <span>on&nbsp;</span><time datetime="2022-04-15 15:00:00 +0000">April 15, 2022</time>
+    
+  </div>
+
+  <h1 class="post-title">[EX-01] Região negativa e troca de regiões</h1>
+  <div class="post-line"></div>
+
+  <h2 id="exercício-11">Exercício 1.1</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/pixels.cpp</code> como referência, implemente um programa regions.cpp. Esse programa deverá solicitar ao usuário as coordenadas de dois pontos P1 e P2 localizados dentro dos limites do tamanho da imagem e exibir que lhe for fornecida. Entretanto, a região definida pelo retângulo de vértices opostos definidos pelos pontos P1 e P2 será exibida com o negativo da imagem na região correspondente.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>Para os testes, iremos utilizar uma imagem de resolução 800x600 denominada <code class="language-plaintext highlighter-rouge">mountain.png</code>. Primeiramente, precisamos ler a imagem do disco em modo de escala de cinza, para isso, utilizamos o método <code class="language-plaintext highlighter-rouge">imread()</code> do OpenCV com o argumento  <code class="language-plaintext highlighter-rouge">cv::IMREAD_GRAYSCALE</code>. Em seguida, verificamos se a imagem foi carregada corretamente, e caso não, retornamos um erro. Se a operação foi executada com sucesso, entretando, seguimos com a execução do programa, obtemos as dimensões da imagem e a armazenamos em uma variável chamada <code class="language-plaintext highlighter-rouge">imageSize</code>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">regions.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">image</span> <span class="o">=</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">imread</span><span class="p">(</span><span class="s">"../assets/images/mountain.png"</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">IMREAD_GRAYSCALE</span><span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">image</span><span class="p">.</span><span class="n">data</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Error while opening the image.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">Size</span> <span class="n">imageSize</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Então, obtemos os pontos fornecidos pelo usuário, através da função <code class="language-plaintext highlighter-rouge">getPointCoordinates()</code> e os validamos, com <code class="language-plaintext highlighter-rouge">isAValidPoint()</code>. A primeira função, utiliza <code class="language-plaintext highlighter-rouge">std::cout</code> e <code class="language-plaintext highlighter-rouge">std::cin</code> para printar e coletar informações do usuário no terminal, guardando-as em uma variável do tipo <code class="language-plaintext highlighter-rouge">Point</code>, as quais guarda as posições x e y. Já a segunda função, verifica se o ponto em questão está dentro do limite das dimensões da imagem, especificado pela variável <code class="language-plaintext highlighter-rouge">imageSize</code>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">regions.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="k">struct</span> <span class="nc">Point</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">getPointCoordinates</span><span class="p">(</span><span class="s">"1"</span><span class="p">);</span>
+<span class="k">struct</span> <span class="nc">Point</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">getPointCoordinates</span><span class="p">(</span><span class="s">"2"</span><span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">isAValidPoint</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">imageSize</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Invalid coordinates for point P1.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">isAValidPoint</span><span class="p">(</span><span class="n">p2</span><span class="p">,</span> <span class="n">imageSize</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Invalid coordinates for point P2.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Após isso, percorremos a matrix da imagem horizontalmente e verticalmente, de acordo com os pontos fornecidos, e para cada ponto, substituimos seu valor pelo seu complemento, com base no total de 255 tons que podemos representar utilizando 8 bits. Por fim, usamos <code class="language-plaintext highlighter-rouge">imshow()</code> para mostrar a imagem resultante.</p>
+
+<p><code class="language-plaintext highlighter-rouge">regions.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">p1</span><span class="p">.</span><span class="n">x</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">p2</span><span class="p">.</span><span class="n">x</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="n">p1</span><span class="p">.</span><span class="n">y</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">p2</span><span class="p">.</span><span class="n">y</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span> <span class="mi">255</span> <span class="o">-</span> <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">"window"</span><span class="p">,</span> <span class="n">image</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">();</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p><img src="../assets/images/mountain.png" alt="Imagem original" />
+<em>Imagem original (mountain.png)</em></p>
+
+<p>Utilizando os valores</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>make regions <span class="o">&amp;&amp;</span> ./regions
+
+<span class="o">&gt;</span> Point 1 coordinates
+x: 0
+y: 0
+
+<span class="o">&gt;</span> Point 2 coordinates
+x: 500
+y: 700
+</code></pre></div></div>
+
+<p>Obtemos a seguinte imagem:</p>
+
+<p><img src="../src/exercises/1/output_regions.png" alt="Imagem processada" />
+<em>Imagem processada</em></p>
+
+<h2 id="exercício-12">Exercício 1.2</h2>
+
+<h3 id="objetivo-1">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/pixels.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">trocaregioes.cpp</code>. Seu programa deverá trocar os quadrantes em diagonal na imagem. Explore o uso da classe Mat e seus construtores para criar as regiões que serão trocadas.</p>
+
+<h3 id="implementação-1">Implementação</h3>
+
+<p>Assim como no exercício 1.1, primeiramente lemos a imagem em disco, verificamos se a operação foi executada corretamente e obtemos suas dimensões.</p>
+
+<p><code class="language-plaintext highlighter-rouge">trocaregioes.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">image</span> <span class="o">=</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">imread</span><span class="p">(</span><span class="s">"../assets/images/mountain.png"</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">IMREAD_GRAYSCALE</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="n">imageWidth</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">width</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">imageHeight</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span><span class="p">;</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">image</span><span class="p">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Error while opening the image.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Então, geramos uma nova matriz composta de zeros, de mesma dimensão e tipo da imagem fornecida, por meio do método <code class="language-plaintext highlighter-rouge">zeros()</code>. De posse dela, percorremos cada quadrante da imagem original, com base em sua altura e largura, e atribuimos cada valor ao quadrante inverso na nova matriz <code class="language-plaintext highlighter-rouge">newImage</code>.</p>
+
+<p>Os quadrantes podem ser definidos dividindo a imagem 4 partes, levando em consideração os pontos <code class="language-plaintext highlighter-rouge">(0,0)</code>, <code class="language-plaintext highlighter-rouge">(largura/2, altura/2)</code>, <code class="language-plaintext highlighter-rouge">(largura, altura)</code> e suas variações.</p>
+
+<p><code class="language-plaintext highlighter-rouge">trocaregioes.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">newImage</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span><span class="n">imageHeight</span><span class="p">,</span> <span class="n">imageWidth</span><span class="p">,</span> <span class="n">CV_8UC1</span><span class="p">);</span>
+
+<span class="c1">// First quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Second quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Third quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Forth quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">j</span> <span class="o">-</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados-1">Resultados</h3>
+
+<p><img src="../assets/images/mountain.png" alt="Imagem original" />
+<em>Imagem original (mountain.png)</em></p>
+
+<p>Após a execução do programa, obtemos a seguinte imagem:</p>
+
+<p><img src="../src/exercises/1/output_trocaregioes.png" alt="Imagem processada" />
+<em>Imagem processada</em></p>
+
+</div>
+
+
+
+<div class="pagination">
+  
+    <a href="/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem" class="left arrow">&#8592;</a>
+  
+  
+
+  <a href="#" class="top">Top</a>
+</div>
+    </main>
+
+    <footer>
+  <span>
+    &copy; <time datetime="2022-07-20 22:34:23 +0000">2022</time> . Made with Jekyll using the <a href="https://github.com/chesterhow/tale/">Tale</a> theme.
+  </span>
+</footer>
+
+  </body>
+</html>

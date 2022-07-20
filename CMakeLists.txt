@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+project( pdi )
+find_package( OpenCV REQUIRED )
+add_executable( hello src/hello.cpp )
+target_link_libraries( hello ${OpenCV_LIBS} )

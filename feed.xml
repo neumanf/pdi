@@ -1,0 +1,1250 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.2">Jekyll</generator><link href="https://neumanf.github.io/pdi/feed.xml" rel="self" type="application/atom+xml" /><link href="https://neumanf.github.io/pdi/" rel="alternate" type="text/html" /><updated>2022-07-20T22:34:23+00:00</updated><id>https://neumanf.github.io/pdi/feed.xml</id><title type="html">Processamento Digital de Sinais</title><entry><title type="html">Restauração de Imagens Borradas</title><link href="https://neumanf.github.io/pdi/2022-07-20/restauracao-de-imagens-borradas" rel="alternate" type="text/html" title="Restauração de Imagens Borradas" /><published>2022-07-20T12:00:00+00:00</published><updated>2022-07-20T12:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-07-20/restauracao-de-imagens-borradas</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-07-20/restauracao-de-imagens-borradas"><![CDATA[<h2 id="embasamento-teórico">Embasamento teórico</h2>
+
+<p>Em uma imagem desfocada, todas as informações estão redistribuídas de acordo com algumas regras e podem ser restauradas admitindo algumas suposições. Como a maioria dos ruídos periódicos, estes são melhor tratados utilizando o domínio do frequência. Para tratá-los, precisamos de um filtro que faça a remoção do borramento (Hw) e do espectro de frequência da imagem borrada (S), conforme a seguinte equação:</p>
+
+<p style="color:gray; font-size: 130%; text-align: center;"><strong>U’ = Hw ⋅ S</strong> (I)</p>
+
+<p>O espectro da imagem degradada pode ser descrito como o produto da resposta em frequência da Função de Dispersão de Ponto (PSF, do inglês), H, com o espectro da imagem original, sem borramento, U, acrescido do espectro do ruído presente, N.</p>
+
+<p style="color:gray; font-size: 130%; text-align: center;"><strong>S = H⋅U+N</strong> (II)</p>
+
+<p>A PSF representa a resposta ao impulso de um sistema óptico focado. Para imagens homogeneamente desfocadas, a PSF circular consegue gerar uma boa aproximação para esse tipo de distorção. Dessa forma, para adequá-la precisamos apenas de um valor para seu raio ou diametro.</p>
+
+<p><img src="../assets/images/psf.png" alt="PSF" />
+<em>Figura 1: Formação de imagem em um microscópio confocal a partir da convolução das fontes de luz reais com a PSF</em></p>
+
+<p>Um dos filtros mais utilizados para esse tipo de tarefa é o Filtro de Wiener. A deconvolução de Wiener é uma aplicação do filtro de Wiener aos problemas de ruído inerentes à deconvolução. Ele funciona no domínio da frequência, tentando minimizar o impacto do ruído deconvoluído em frequências que possuem uma má relação sinal-ruído, e pode ser descrito com base no sistema ou imagem original e a razão sinal-ruído (SNR, do inglês).</p>
+
+<p><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/a867fc7cd7c4e2e926de891c526c21cc5244f796" alt="Wiener" />
+<em>Figura 2: Filtro de Wiener aplicado à deconvolução</em></p>
+
+<p>Por fim, de posse do filtro de deconvolução e do espectro da imagem borrada, podemos utilizar a equação (I).</p>
+
+<h2 id="aplicação">Aplicação</h2>
+
+<h3 id="visão-geral">Visão geral</h3>
+
+<p>O projeto é dividido em duas partes: WebApp (construído em HTML, CSS e JS) e API (construída em Python). O WebApp é responsável tanto pela exibição e controle da interface de usuário, como também pelo envio e recebimento dos dados da API. A API  recebe a requisição, processa a imagem de acordo com os parâmetros fornecidos e retorna uma nova imagem, que será posteriormente exibida na interface.</p>
+
+<p>A comunicação ocorre via requisições HTTP. A interface envia uma requisição do tipo POST com a imagem original, fornecida pelo usuário, e os parâmetros necessários para o filtro em questão. Após o processamento, a API retorna a imagem processada.</p>
+
+<p><img src="../assets/images/communication.png" alt="Estrutura do projeto" />
+<em>Figura 3: Comunicação entre a interface e a API</em></p>
+
+<h3 id="filtragem">Filtragem</h3>
+
+<p>A filtragem é realizada pela classe <code class="language-plaintext highlighter-rouge">ImageDeblur</code>. Nela, são passados os parâmetros do filtro pelo seu construtor, e a imagem em binário, pelo método <code class="language-plaintext highlighter-rouge">deblur</code>. Este método utiliza-se da classe auxiliar <code class="language-plaintext highlighter-rouge">ImageConverter</code> tanto para converter de bytes para imagem (isto é, para uma matriz processável), como de imagem para bytes, para ser enviada à interface, ao final do processo.</p>
+
+<p>Inicialmente, para obter a imagem no domínio da frequência, ela é normalizada, suas bordas são borradas, com o auxílio de um filtro Gaussiano, e uma nova imagem é gerada a partir do cálculo da Transformada Discreta de Fourier (DFT). A aplicação possui dois modos: para imagens fora de foco e imagens com borrão de movimento. Para distinguir dos dois modos, é analisado se foi fornecido o parâmetro de ângulo do movimento, caso verdadeiro, este ângulo é convertido de graus para radianos e é chamado o método <code class="language-plaintext highlighter-rouge">motion_kernel</code>, caso contrário, o método <code class="language-plaintext highlighter-rouge">defocus_kernel</code> é chamado. Ambos os métodos geram uma PSF, que será utilizada posteriormente. A Figura 4 mostra um exemplo de PSF circular gerada pelo segundo método.</p>
+
+<p><img src="https://docs.opencv.org/4.6.0/psf.png" alt="PSF Circular" />
+<em>Figura 4: Exemplo de PSF circular gerada por <code class="language-plaintext highlighter-rouge">defocus_kernel</code></em></p>
+
+<p>Em seguida, devido ao tamanho da PSF, é realizado um <em>padding</em>, preenchendo suas bordas com zeros, para que seja calculada sua DFT. Por fim, o filtro de Wiener é calculado e o multiplicamos com o espectro da imagem original, conforme visto na equação (I).</p>
+
+<p><code class="language-plaintext highlighter-rouge">deblur.py</code></p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">ImageDeblur</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">snr</span> <span class="o">=</span> <span class="n">snr</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span>
+
+    <span class="p">[...]</span>
+
+    <span class="k">def</span> <span class="nf">defocus_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">sz</span><span class="o">=</span><span class="mi">65</span><span class="p">):</span>
+        <span class="n">kern</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">sz</span><span class="p">,</span> <span class="n">sz</span><span class="p">),</span> <span class="n">np</span><span class="p">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">cv</span><span class="p">.</span><span class="n">circle</span><span class="p">(</span><span class="n">kern</span><span class="p">,</span> <span class="p">(</span><span class="n">sz</span><span class="p">,</span> <span class="n">sz</span><span class="p">),</span> <span class="n">d</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">cv</span><span class="p">.</span><span class="n">LINE_AA</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">kern</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">float32</span><span class="p">(</span><span class="n">kern</span><span class="p">)</span> <span class="o">/</span> <span class="mf">255.0</span>
+        <span class="k">return</span> <span class="n">kern</span>
+
+    <span class="k">def</span> <span class="nf">deblur</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">ImageConverter</span><span class="p">.</span><span class="n">from_bytes_to_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">float32</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="o">/</span><span class="mf">255.0</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">blur_edge</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">IMG</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">dft</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv</span><span class="p">.</span><span class="n">DFT_COMPLEX_OUTPUT</span><span class="p">)</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">d</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.1</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">snr</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="p">.</span><span class="n">angle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">angle</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">angle</span><span class="p">)</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">motion_kernel</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">defocus_kernel</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+
+        <span class="n">psf</span> <span class="o">/=</span> <span class="n">psf</span><span class="p">.</span><span class="nb">sum</span><span class="p">()</span>
+        <span class="n">psf_pad</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">kh</span><span class="p">,</span> <span class="n">kw</span> <span class="o">=</span> <span class="n">psf</span><span class="p">.</span><span class="n">shape</span>
+        <span class="n">psf_pad</span><span class="p">[:</span><span class="n">kh</span><span class="p">,</span> <span class="p">:</span><span class="n">kw</span><span class="p">]</span> <span class="o">=</span> <span class="n">psf</span>
+        <span class="n">PSF</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">dft</span><span class="p">(</span><span class="n">psf_pad</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv</span><span class="p">.</span><span class="n">DFT_COMPLEX_OUTPUT</span><span class="p">,</span> <span class="n">nonzeroRows</span><span class="o">=</span><span class="n">kh</span><span class="p">)</span>
+        <span class="n">PSF2</span> <span class="o">=</span> <span class="p">(</span><span class="n">PSF</span><span class="o">**</span><span class="mi">2</span><span class="p">).</span><span class="nb">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">iPSF</span> <span class="o">=</span> <span class="n">PSF</span> <span class="o">/</span> <span class="p">(</span><span class="n">PSF2</span> <span class="o">+</span> <span class="n">noise</span><span class="p">)[...,</span> <span class="n">np</span><span class="p">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">RES</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">mulSpectrums</span><span class="p">(</span><span class="n">IMG</span><span class="p">,</span> <span class="n">iPSF</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">idft</span><span class="p">(</span><span class="n">RES</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv</span><span class="p">.</span><span class="n">DFT_SCALE</span> <span class="o">|</span> <span class="n">cv</span><span class="p">.</span><span class="n">DFT_REAL_OUTPUT</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">roll</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="o">-</span><span class="n">kh</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">roll</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="o">-</span><span class="n">kw</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">ImageConverter</span><span class="p">.</span><span class="n">from_image_to_bytes</span><span class="p">(</span><span class="mi">255</span><span class="o">*</span><span class="n">res</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">res</span></code></pre></figure>
+
+<h2 id="resultados">Resultados</h2>
+
+<p>Ao escolher uma imagem fora de foco que possui vários textos, após ajuste dos parâmetros e tratamento, podemos enxergar o que está escrito, como mostrado na Figura 5.</p>
+
+<p><img src="../assets/images/result.png" alt="Resultado" />
+<em>Figura 5: Resultado da restauração</em></p>
+
+<p><strong>Repositório da aplicação:</strong> <a href="https://github.com/neumanf/image-deblur-tool">neumanf/image-deblur-tool</a></p>
+
+<p><strong>Acesso à aplicação no ar:</strong> <a href="https://image-deblur-tool.vercel.app/">image-deblur-tool.vercel.app</a></p>
+
+<h2 id="referências">Referências</h2>
+
+<ul>
+  <li>http://yuzhikov.com/articles/BlurredImagesRestoration1.htm</li>
+  <li>https://docs.opencv.org/4.6.0/de/d3c/tutorial_out_of_focus_deblur_filter.html</li>
+  <li>https://github.com/opencv/opencv/blob/4.x/samples/python/deconvolution.py</li>
+  <li>https://en.wikipedia.org/wiki/Point_spread_function</li>
+  <li>https://en.wikipedia.org/wiki/Wiener_deconvolution</li>
+</ul>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Embasamento teórico]]></summary></entry><entry><title type="html">[EX-08] Kmeans</title><link href="https://neumanf.github.io/pdi/2022-06-11/kmeans" rel="alternate" type="text/html" title="[EX-08] Kmeans" /><published>2022-06-11T13:00:00+00:00</published><updated>2022-06-11T13:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-06-11/kmeans</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-06-11/kmeans"><![CDATA[<h2 id="exercício-8">Exercício 8</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">kmeans.cpp</code> como exemplo prepare um programa exemplo onde a execução do código se dê usando o parâmetro <code class="language-plaintext highlighter-rouge">nRodadas=1</code> e iniciar os centros de forma aleatória usando o parâmetro <code class="language-plaintext highlighter-rouge">KMEANS_RANDOM_CENTERS</code> ao invés de <code class="language-plaintext highlighter-rouge">KMEANS_PP_CENTERS</code>. Realize 10 rodadas diferentes do algoritmo e compare as imagens produzidas. Explique porque elas podem diferir tanto.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>Modificando o número de rodadas, inserindo o parâmetro <code class="language-plaintext highlighter-rouge">KMEANS_RANDOM_CENTERS</code> e realizando 10 iterações através de um loop, temos:</p>
+
+<p><code class="language-plaintext highlighter-rouge">kmeans.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">nClusters</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
+    <span class="n">Mat</span> <span class="n">rotulos</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">nRodadas</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">Mat</span> <span class="n">centros</span><span class="p">;</span>
+
+    <span class="n">Mat</span> <span class="n">img</span> <span class="o">=</span> <span class="n">imread</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cv</span><span class="o">::</span><span class="n">IMREAD_COLOR</span><span class="p">);</span>
+    <span class="n">Mat</span> <span class="n">samples</span><span class="p">(</span><span class="n">img</span><span class="p">.</span><span class="n">rows</span> <span class="o">*</span> <span class="n">img</span><span class="p">.</span><span class="n">cols</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">CV_32F</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o">&lt;</span> <span class="n">img</span><span class="p">.</span><span class="n">rows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">img</span><span class="p">.</span><span class="n">cols</span><span class="p">;</span> <span class="n">x</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">z</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">z</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">;</span> <span class="n">z</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">samples</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="n">x</span> <span class="o">*</span> <span class="n">img</span><span class="p">.</span><span class="n">rows</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="o">=</span>
+                    <span class="n">img</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">Vec3b</span><span class="o">&gt;</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="n">z</span><span class="p">];</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="n">kmeans</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="n">nClusters</span><span class="p">,</span> <span class="n">rotulos</span><span class="p">,</span>
+            <span class="n">TermCriteria</span><span class="p">(</span><span class="n">TermCriteria</span><span class="o">::</span><span class="n">MAX_ITER</span> <span class="o">|</span> <span class="n">TermCriteria</span><span class="o">::</span><span class="n">EPS</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span>
+                        <span class="mf">0.0001</span><span class="p">),</span>
+            <span class="n">nRodadas</span><span class="p">,</span> <span class="n">KMEANS_RANDOM_CENTERS</span><span class="p">,</span> <span class="n">centros</span><span class="p">);</span>
+
+    <span class="n">Mat</span> <span class="n">rotulada</span><span class="p">(</span><span class="n">img</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">img</span><span class="p">.</span><span class="n">type</span><span class="p">());</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o">&lt;</span> <span class="n">img</span><span class="p">.</span><span class="n">rows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">img</span><span class="p">.</span><span class="n">cols</span><span class="p">;</span> <span class="n">x</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">indice</span> <span class="o">=</span> <span class="n">rotulos</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="n">x</span> <span class="o">*</span> <span class="n">img</span><span class="p">.</span><span class="n">rows</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+            <span class="n">rotulada</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">Vec3b</span><span class="o">&gt;</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span>
+                <span class="p">(</span><span class="n">uchar</span><span class="p">)</span><span class="n">centros</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">indice</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+            <span class="n">rotulada</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">Vec3b</span><span class="o">&gt;</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span>
+                <span class="p">(</span><span class="n">uchar</span><span class="p">)</span><span class="n">centros</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">indice</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+            <span class="n">rotulada</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">Vec3b</span><span class="o">&gt;</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span>
+                <span class="p">(</span><span class="n">uchar</span><span class="p">)</span><span class="n">centros</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">indice</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kt">char</span> <span class="n">output</span><span class="p">[</span><span class="mi">50</span><span class="p">];</span>
+
+    <span class="n">sprintf</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s">"./exercises/8/output%d.jpg"</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+
+    <span class="n">imwrite</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">rotulada</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p><img src="../src/exercises/8/park.jpg" alt="Imagem original" />
+<em>Imagem original</em></p>
+
+<p>Após executar o programa e obter as 10 imagens, foi utilizado o site ezgif.com para criar um GIF mostrando cada uma delas em ordem.</p>
+
+<p><img src="../src/exercises/8/output.gif" alt="10 iterações" />
+<em>10 iterações de kmeans com nRodadas = 1</em></p>
+
+<p>O efeito apresentado dá-se devido à aleatoriedade da escolha de centros, porporcionada pelo parâmetro <code class="language-plaintext highlighter-rouge">KMEANS_RANDOM_CENTERS</code>.</p>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 8]]></summary></entry><entry><title type="html">[EX-07] Pontilhismo</title><link href="https://neumanf.github.io/pdi/2022-06-11/pontilhismo" rel="alternate" type="text/html" title="[EX-07] Pontilhismo" /><published>2022-06-11T12:00:00+00:00</published><updated>2022-06-11T12:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-06-11/pontilhismo</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-06-11/pontilhismo"><![CDATA[<h2 id="exercício-7">Exercício 7</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<ul>
+  <li>
+    <p>Utilizando os programas <code class="language-plaintext highlighter-rouge">exemplos/canny.cpp</code> e <code class="language-plaintext highlighter-rouge">exemplos/pontilhismo.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">cannypoints.cpp</code>. A idéia é usar as bordas produzidas pelo algoritmo de Canny para melhorar a qualidade da imagem pontilhista gerada. A forma como a informação de borda será usada é livre. Entretanto, são apresentadas algumas sugestões de técnicas que poderiam ser utilizadas:</p>
+
+    <ul>
+      <li>
+        <p>Desenhar pontos grandes na imagem pontilhista básica;</p>
+      </li>
+      <li>
+        <p>Usar a posição dos pixels de borda encontrados pelo algoritmo de Canny para desenhar pontos nos respectivos locais na imagem gerada.</p>
+      </li>
+      <li>
+        <p>Experimente ir aumentando os limiares do algoritmo de Canny e, para cada novo par de limiares, desenhar círculos cada vez menores nas posições encontradas. A Figura 19 foi desenvolvida usando essa técnica.</p>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <p>Escolha uma imagem de seu gosto e aplique a técnica que você desenvolveu.</p>
+  </li>
+  <li>
+    <p>Descreva no seu relatório detalhes do procedimento usado para criar sua técnica pontilhista.</p>
+  </li>
+</ul>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>Com base nos dois programas fornecidos, foi elaborado o seguinte algoritmo para alcançar um resultado similar ao da Figura 19:</p>
+
+<ol>
+  <li>Aplicar Canny com um threshold pré-definido</li>
+  <li>Realizar a pintura dos pontos maiores que compõem a imagem</li>
+  <li>Realizar consecutivas pinturas (10, no exemplo mostrado) de pontos menores nas bordas encontradas por Canny</li>
+  <li>Testar se o threshold é adequado, caso não seja, mudar seu valor e repetir o processo novamente</li>
+</ol>
+
+<p>Por fim, o valor 30 pareceu o mais adequado para a imagem utilizada.</p>
+
+<p><code class="language-plaintext highlighter-rouge">cannypoints.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="kt">int</span> <span class="n">cannyThreshold</span> <span class="o">=</span> <span class="mi">30</span><span class="p">;</span>
+<span class="n">Canny</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">border</span><span class="p">,</span> <span class="n">cannyThreshold</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">cannyThreshold</span><span class="p">);</span>
+
+<span class="n">xrange</span><span class="p">.</span><span class="n">resize</span><span class="p">(</span><span class="n">height</span> <span class="o">/</span> <span class="n">STEP</span><span class="p">);</span>
+<span class="n">yrange</span><span class="p">.</span><span class="n">resize</span><span class="p">(</span><span class="n">width</span> <span class="o">/</span> <span class="n">STEP</span><span class="p">);</span>
+
+<span class="n">iota</span><span class="p">(</span><span class="n">xrange</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">xrange</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">);</span>
+<span class="n">iota</span><span class="p">(</span><span class="n">yrange</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">yrange</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="n">uint</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">xrange</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">xrange</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xrange</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">STEP</span> <span class="o">+</span> <span class="n">STEP</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="n">uint</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">yrange</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">yrange</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">yrange</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">STEP</span> <span class="o">+</span> <span class="n">STEP</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">points</span> <span class="o">=</span> <span class="n">Mat</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">CV_8U</span><span class="p">,</span> <span class="n">Scalar</span><span class="p">(</span><span class="mi">255</span><span class="p">));</span>
+
+<span class="n">random_shuffle</span><span class="p">(</span><span class="n">xrange</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">xrange</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span> <span class="o">:</span> <span class="n">xrange</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">random_shuffle</span><span class="p">(</span><span class="n">yrange</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">yrange</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">j</span> <span class="o">:</span> <span class="n">yrange</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">JITTER</span><span class="p">)</span> <span class="o">-</span> <span class="n">JITTER</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">j</span> <span class="o">+</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">JITTER</span><span class="p">)</span> <span class="o">-</span> <span class="n">JITTER</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">gray</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+
+        <span class="n">circle</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">RAIO</span><span class="p">,</span> <span class="n">CV_RGB</span><span class="p">(</span><span class="n">gray</span><span class="p">,</span> <span class="n">gray</span><span class="p">,</span> <span class="n">gray</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">cv</span><span class="o">::</span><span class="n">LINE_AA</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span> <span class="o">:</span> <span class="n">xrange</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">random_shuffle</span><span class="p">(</span><span class="n">yrange</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">yrange</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+        <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">j</span> <span class="o">:</span> <span class="n">yrange</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">JITTER</span><span class="p">)</span> <span class="o">-</span> <span class="n">JITTER</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">j</span> <span class="o">+</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">JITTER</span><span class="p">)</span> <span class="o">-</span> <span class="n">JITTER</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+            <span class="n">gray</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">border</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">==</span> <span class="mi">255</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">circle</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">RAIO</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="n">CV_RGB</span><span class="p">(</span><span class="n">gray</span><span class="p">,</span> <span class="n">gray</span><span class="p">,</span> <span class="n">gray</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">LINE_AA</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">imshow</span><span class="p">(</span><span class="s">"points"</span><span class="p">,</span> <span class="n">points</span><span class="p">);</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p><img src="../src/exercises/7/hunt.jpg" alt="Imagem original" />
+<em>Imagem original</em></p>
+
+<p>Após executado o programa, obtemos a seguinte imagem:</p>
+
+<p><img src="../src/exercises/7/pontos.jpg" alt="Imagem pontilhista" />
+<em>Imagem pontilhista</em></p>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 7]]></summary></entry><entry><title type="html">[EX-06] Filtro Homomórfico</title><link href="https://neumanf.github.io/pdi/2022-06-11/filtro-homomorfico" rel="alternate" type="text/html" title="[EX-06] Filtro Homomórfico" /><published>2022-06-11T10:00:00+00:00</published><updated>2022-06-11T10:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-06-11/filtro-homomorfico</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-06-11/filtro-homomorfico"><![CDATA[<h2 id="exercício-6">Exercício 6</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/dft.cpp</code> como referência, implemente o filtro homomórfico para melhorar imagens com iluminação irregular. Crie uma cena mal iluminada e ajuste os parâmetros do filtro homomórfico para corrigir a iluminação da melhor forma possível. Assuma que a imagem fornecida é em tons de cinza.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>Primeiramente, definimos variáveis globais para armazenar a imagem inicial, os valores dos filtros e seus valores iniciais e máximos de suas <em>trackbars</em>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">homomorphic_filter.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">image</span><span class="p">;</span>
+
+<span class="c1">// valores utilizados no filtro e trackbars</span>
+<span class="kt">float</span> <span class="n">gammaH</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">gammaL</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">d0</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="kt">float</span> <span class="n">gammaHMax</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">gammaLMax</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">cMax</span> <span class="o">=</span> <span class="mi">250</span><span class="p">,</span> <span class="n">d0Max</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+      <span class="n">trackbarMax</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">gammaHSlider</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">gammaLSlider</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cSlider</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">d0Slider</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Na função principal, carregamos a imagem original, a convertemos para escala de cinza,  criamos a janela e as <em>trackbars</em> responsáveis por mudar as variáveis do filtro homomórfico.</p>
+
+<p><code class="language-plaintext highlighter-rouge">homomorphic_filter.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">trackbarName</span><span class="p">[</span><span class="mi">50</span><span class="p">];</span>
+
+    <span class="c1">// carrega a imagem e a converte para escala de cinza</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">imread</span><span class="p">(</span><span class="s">"./exercises/6/forest.jpg"</span><span class="p">);</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">COLOR_BGR2GRAY</span><span class="p">);</span>
+
+    <span class="n">cv</span><span class="o">::</span><span class="n">namedWindow</span><span class="p">(</span><span class="s">"Filtro Homomorfico"</span><span class="p">);</span>
+
+    <span class="c1">// configura as trackbars</span>
+    <span class="n">sprintf</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"gamma_H"</span><span class="p">);</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"Filtro Homomorfico"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">gammaHSlider</span><span class="p">,</span>
+                       <span class="n">trackbarMax</span><span class="p">,</span> <span class="n">on_trackbar_gamma_h</span><span class="p">);</span>
+
+    <span class="n">sprintf</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"gamma_L"</span><span class="p">);</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"Filtro Homomorfico"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">gammaLSlider</span><span class="p">,</span>
+                       <span class="n">trackbarMax</span><span class="p">,</span> <span class="n">on_trackbar_gamma_l</span><span class="p">);</span>
+
+    <span class="n">sprintf</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"C"</span><span class="p">);</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"Filtro Homomorfico"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cSlider</span><span class="p">,</span>
+                       <span class="n">trackbarMax</span><span class="p">,</span> <span class="n">on_trackbar_c</span><span class="p">);</span>
+
+    <span class="n">sprintf</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"D0"</span><span class="p">);</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="n">trackbarName</span><span class="p">,</span> <span class="s">"Filtro Homomorfico"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">d0Slider</span><span class="p">,</span>
+                       <span class="n">trackbarMax</span><span class="p">,</span> <span class="n">on_trackbar_d0</span><span class="p">);</span>
+
+    <span class="n">homomorphicFilter</span><span class="p">();</span>
+
+    <span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>A função <code class="language-plaintext highlighter-rouge">homomorphicFilter</code> descreve o filtro homomórfico, baseando-se na implementação de <code class="language-plaintext highlighter-rouge">dft.cpp</code>. A característica que as diferenciam é a troca do filtro passa-baixas ideal para o filtro homomórfico, que deriva da equação a seguir:</p>
+
+<p><img src="https://i.stack.imgur.com/VSKA5.png" alt="equacao" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">homomorphic_filter.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="kt">void</span> <span class="nf">homomorphicFilter</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">imaginaryInput</span><span class="p">,</span> <span class="n">complexImage</span><span class="p">,</span> <span class="n">multsp</span><span class="p">;</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">padded</span><span class="p">,</span> <span class="n">filter</span><span class="p">,</span> <span class="n">mag</span><span class="p">;</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">imagegray</span><span class="p">,</span> <span class="n">tmp</span><span class="p">;</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">Mat_</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span> <span class="n">realInput</span><span class="p">,</span> <span class="n">zeros</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">&gt;</span> <span class="n">planos</span><span class="p">;</span>
+
+    <span class="c1">// valores ideais dos tamanhos da imagem</span>
+    <span class="c1">// para calculo da DFT</span>
+    <span class="kt">int</span> <span class="n">dft_M</span><span class="p">,</span> <span class="n">dft_N</span><span class="p">;</span>
+
+    <span class="c1">// identifica os tamanhos otimos para</span>
+    <span class="c1">// calculo do FFT</span>
+    <span class="n">dft_M</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getOptimalDFTSize</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">rows</span><span class="p">);</span>
+    <span class="n">dft_N</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getOptimalDFTSize</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">cols</span><span class="p">);</span>
+
+    <span class="c1">// realiza o padding da imagem</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">copyMakeBorder</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">padded</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">dft_M</span> <span class="o">-</span> <span class="n">image</span><span class="p">.</span><span class="n">rows</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                       <span class="n">dft_N</span> <span class="o">-</span> <span class="n">image</span><span class="p">.</span><span class="n">cols</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">BORDER_CONSTANT</span><span class="p">,</span>
+                       <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="o">::</span><span class="n">all</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+
+    <span class="c1">// parte imaginaria da matriz complexa (preenchida com zeros)</span>
+    <span class="n">zeros</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat_</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;::</span><span class="n">zeros</span><span class="p">(</span><span class="n">padded</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+
+    <span class="c1">// prepara a matriz complexa para ser preenchida</span>
+    <span class="n">complexImage</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">padded</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">CV_32FC2</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+
+    <span class="c1">// a função de transferencia (filtro de frequencia) deve ter o</span>
+    <span class="c1">// mesmo tamanho e tipo da matriz complexa</span>
+    <span class="n">filter</span> <span class="o">=</span> <span class="n">complexImage</span><span class="p">.</span><span class="n">clone</span><span class="p">();</span>
+
+    <span class="c1">// cria uma matriz temporária para criar as componentes real</span>
+    <span class="c1">// e imaginaria do filtro ideal</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">dft_M</span><span class="p">,</span> <span class="n">dft_N</span><span class="p">,</span> <span class="n">CV_32F</span><span class="p">);</span>
+
+    <span class="c1">// prepara o filtro homomorfico</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">dft_M</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">dft_N</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">float</span> <span class="n">d</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span>
+                <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">dft_M</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="n">dft_N</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="mf">0.5</span><span class="p">);</span>
+            <span class="n">tmp</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span>
+                <span class="p">(</span><span class="n">gammaH</span> <span class="o">-</span> <span class="n">gammaL</span><span class="p">)</span> <span class="o">*</span>
+                    <span class="p">(</span><span class="mi">1</span> <span class="o">-</span>
+                     <span class="n">std</span><span class="o">::</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">c</span> <span class="o">*</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">d0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))))</span> <span class="o">+</span>
+                <span class="n">gammaL</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="c1">// cria a matriz com as componentes do filtro e junta</span>
+    <span class="c1">// ambas em uma matriz multi-canal complexa</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">comps</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="n">tmp</span><span class="p">,</span> <span class="n">tmp</span><span class="p">};</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">merge</span><span class="p">(</span><span class="n">comps</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">filter</span><span class="p">);</span>
+
+    <span class="c1">// limpa o array de matrizes que vao compor a</span>
+    <span class="c1">// imagem complexa</span>
+    <span class="n">planos</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+
+    <span class="c1">// cria a compoente real</span>
+    <span class="n">realInput</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat_</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">padded</span><span class="p">);</span>
+
+    <span class="c1">// insere as duas componentes no array de matrizes</span>
+    <span class="n">planos</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">realInput</span><span class="p">);</span>
+    <span class="n">planos</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">zeros</span><span class="p">);</span>
+
+    <span class="c1">// combina o array de matrizes em uma unica</span>
+    <span class="c1">// componente complexa</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">merge</span><span class="p">(</span><span class="n">planos</span><span class="p">,</span> <span class="n">complexImage</span><span class="p">);</span>
+
+    <span class="c1">// calcula o dft</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">dft</span><span class="p">(</span><span class="n">complexImage</span><span class="p">,</span> <span class="n">complexImage</span><span class="p">);</span>
+
+    <span class="c1">// realiza a troca de quadrantes</span>
+    <span class="n">swapImageQuadrants</span><span class="p">(</span><span class="n">complexImage</span><span class="p">);</span>
+
+    <span class="c1">// aplica o filtro de frequencia</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">mulSpectrums</span><span class="p">(</span><span class="n">complexImage</span><span class="p">,</span> <span class="n">filter</span><span class="p">,</span> <span class="n">complexImage</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="c1">// limpa o array de planos</span>
+    <span class="n">planos</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+
+    <span class="c1">// separa as partes real e imaginaria para modifica-las</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">split</span><span class="p">(</span><span class="n">complexImage</span><span class="p">,</span> <span class="n">planos</span><span class="p">);</span>
+
+    <span class="c1">// recompoe os planos em uma unica matriz complexa</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">merge</span><span class="p">(</span><span class="n">planos</span><span class="p">,</span> <span class="n">complexImage</span><span class="p">);</span>
+
+    <span class="c1">// troca novamente os quadrantes</span>
+    <span class="n">swapImageQuadrants</span><span class="p">(</span><span class="n">complexImage</span><span class="p">);</span>
+
+    <span class="c1">// calcula a DFT inversa</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">idft</span><span class="p">(</span><span class="n">complexImage</span><span class="p">,</span> <span class="n">complexImage</span><span class="p">);</span>
+
+    <span class="c1">// limpa o array de planos</span>
+    <span class="n">planos</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+
+    <span class="c1">// separa as partes real e imaginaria da</span>
+    <span class="c1">// imagem filtrada</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">split</span><span class="p">(</span><span class="n">complexImage</span><span class="p">,</span> <span class="n">planos</span><span class="p">);</span>
+
+    <span class="c1">// normaliza a parte real para exibicao</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">normalize</span><span class="p">(</span><span class="n">planos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">planos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">NORM_MINMAX</span><span class="p">);</span>
+
+    <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">"Filtro Homomorfico"</span><span class="p">,</span> <span class="n">planos</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p><img src="../src/exercises/6/forest.jpg" alt="Imagem original" />
+<em>Imagem original</em></p>
+
+<p>Escolhendo os valores <code class="language-plaintext highlighter-rouge">gammaH = 25</code>, <code class="language-plaintext highlighter-rouge">gammaL = 10</code>, <code class="language-plaintext highlighter-rouge">C = 25</code> e <code class="language-plaintext highlighter-rouge">D0 = 35</code>, através dos <em>sliders</em>, obtemos a seguinte imagem:</p>
+
+<p><img src="../src/exercises/6/output.png" alt="Imagem filtrada" />
+<em>Imagem filtrada com o filtro homomórfico</em></p>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 6]]></summary></entry><entry><title type="html">[EX-05] Tilt-shift em imagens e vídeos</title><link href="https://neumanf.github.io/pdi/2022-05-14/tilt-shift" rel="alternate" type="text/html" title="[EX-05] Tilt-shift em imagens e vídeos" /><published>2022-05-14T09:00:00+00:00</published><updated>2022-05-14T09:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-05-14/tilt-shift</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-05-14/tilt-shift"><![CDATA[<h2 id="exercício-51">Exercício 5.1</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/addweighted.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">tiltshift.cpp</code>. Três ajustes deverão ser providos na tela da interface:</p>
+<ul>
+  <li>um ajuste para regular a altura da região central que entrará em foco;</li>
+  <li>um ajuste para regular a força de decaimento da região borrada;</li>
+  <li>um ajuste para regular a posição vertical do centro da região que entrará em foco. Finalizado o programa, a imagem produzida deverá ser salva em arquivo.</li>
+</ul>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>Para realizar o efeito de borramento, primeiramente foi aplicado o filtro da média na imagem original e seu resultado armazenado em uma nova matriz denominada <code class="language-plaintext highlighter-rouge">filteredImage</code>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">tiltshift.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="kt">float</span> <span class="n">media</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span>
+                    <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">};</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">mask</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">CV_32F</span><span class="p">,</span> <span class="n">media</span><span class="p">);</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">filter2D</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">filteredImage</span><span class="p">,</span> <span class="n">image</span><span class="p">.</span><span class="n">depth</span><span class="p">(),</span> <span class="n">mask</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="n">filteredImage</span><span class="p">.</span><span class="n">copyTo</span><span class="p">(</span><span class="n">imageTop</span><span class="p">);</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<p>O programa conta com 3 <em>sliders</em>, sendo eles: o ajuste para regular a altura da região central que entrará em foco, o ajuste para regular a força de decaimento da região borrada e o ajuste para regular a posição vertical do centro da região que entrará em foco. Cada slider depende de um <em>callback</em>, de seu valor inicial/atual e máximo. Esses são definidos da seguinte maneira:</p>
+
+<p><code class="language-plaintext highlighter-rouge">tiltshift.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="n">std</span><span class="o">::</span><span class="n">sprintf</span><span class="p">(</span><span class="n">TrackbarName</span><span class="p">,</span> <span class="s">"Height x %d"</span><span class="p">,</span> <span class="n">height_slider_max</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="n">TrackbarName</span><span class="p">,</span> <span class="s">"addweighted"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">height_slider</span><span class="p">,</span>
+                    <span class="n">height_slider_max</span><span class="p">,</span> <span class="n">on_trackbar_height</span><span class="p">);</span>
+<span class="n">on_trackbar_height</span><span class="p">(</span><span class="n">height_slider</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">sprintf</span><span class="p">(</span><span class="n">TrackbarName</span><span class="p">,</span> <span class="s">"Decay x %d"</span><span class="p">,</span> <span class="n">decay_slider_max</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="n">TrackbarName</span><span class="p">,</span> <span class="s">"addweighted"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">decay_slider</span><span class="p">,</span>
+                    <span class="n">decay_slider_max</span><span class="p">,</span> <span class="n">on_trackbar_decay</span><span class="p">);</span>
+<span class="n">on_trackbar_decay</span><span class="p">(</span><span class="n">decay_slider</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">sprintf</span><span class="p">(</span><span class="n">TrackbarName</span><span class="p">,</span> <span class="s">"Center x %d"</span><span class="p">,</span> <span class="n">center_slider_max</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="n">TrackbarName</span><span class="p">,</span> <span class="s">"addweighted"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">center_slider</span><span class="p">,</span>
+                    <span class="n">center_slider_max</span><span class="p">,</span> <span class="n">on_trackbar_center</span><span class="p">);</span>
+<span class="n">on_trackbar_center</span><span class="p">(</span><span class="n">center_slider</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<p>A função <code class="language-plaintext highlighter-rouge">on_trackbar_decay</code> é responsável por mudar o decaimento, e utiliza como base a equação fornecida no tutorial, que define a ponderação da imagem, <code class="language-plaintext highlighter-rouge">alpha</code>. Para cada linha da imagem, o alpha é calculado e o resultado é combinado utilizando a função <code class="language-plaintext highlighter-rouge">addWeighted</code>, dada no exemplo. A equação que define alpha necessita de dois valores, l1 e l2, que representam as linhas cujo valor de alpha assume valor em torno de 0,5. Os demais sliders atribuem à essas variáveis valores de acordo com que o valor do slider seja modificado, e ao final, chamam a função de decaimento, para que a nova imagem seja mostrada em tela.</p>
+
+<p><code class="language-plaintext highlighter-rouge">tiltshift.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="kt">void</span> <span class="nf">on_trackbar_decay</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">filteredImage</span><span class="p">.</span><span class="n">rows</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">double</span> <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">decay_slider</span><span class="p">;</span>
+        <span class="kt">double</span> <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">tanh</span><span class="p">((</span><span class="n">i</span> <span class="o">-</span> <span class="n">l1</span><span class="p">)</span> <span class="o">/</span> <span class="n">d</span><span class="p">)</span> <span class="o">-</span> <span class="n">tanh</span><span class="p">((</span><span class="n">i</span> <span class="o">-</span> <span class="n">l2</span><span class="p">)</span> <span class="o">/</span> <span class="n">d</span><span class="p">));</span>
+
+        <span class="n">cv</span><span class="o">::</span><span class="n">addWeighted</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">row</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">imageTop</span><span class="p">.</span><span class="n">row</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="n">filteredImage</span><span class="p">.</span><span class="n">row</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">"addweighted"</span><span class="p">,</span> <span class="n">filteredImage</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">on_trackbar_height</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">l1</span> <span class="o">=</span> <span class="n">height_slider</span> <span class="o">-</span> <span class="n">center_slider</span> <span class="o">+</span> <span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="n">l2</span> <span class="o">=</span> <span class="n">height_slider</span> <span class="o">+</span> <span class="n">center_slider</span> <span class="o">+</span> <span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="n">on_trackbar_decay</span><span class="p">(</span><span class="n">decay_slider</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">on_trackbar_center</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">l1</span> <span class="o">=</span> <span class="n">height_slider</span> <span class="o">-</span> <span class="n">center_slider</span> <span class="o">+</span> <span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="n">l2</span> <span class="o">=</span> <span class="n">height_slider</span> <span class="o">+</span> <span class="n">center_slider</span> <span class="o">+</span> <span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="n">on_trackbar_decay</span><span class="p">(</span><span class="n">decay_slider</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p><img src="../src/exercises/5/alaska.png" alt="Imagem original_" />
+<em>Imagem original</em></p>
+
+<p>Selecionando a altura como 75, decaimento como 100 e a posição do centro como 100, obtemos um foco na casa principal.</p>
+
+<p><img src="../src/exercises/5/output.png" alt="Imagem filtrada demo" />
+<em>Imagem filtrada demo</em></p>
+
+<p>O resultado é a seguinte imagem:</p>
+
+<p><img src="../src/exercises/5/raw_output.png" alt="Imagem filtrada" />
+<em>Imagem filtrada</em></p>
+
+<h2 id="exercício-52">Exercício 5.2</h2>
+
+<h3 id="objetivo-1">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/addweighted.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">tiltshiftvideo.cpp</code>. Tal programa deverá ser capaz de processar um arquivo de vídeo, produzir o efeito de tilt-shift nos quadros presentes e escrever o resultado em outro arquivo de vídeo. A ideia é criar um efeito de miniaturização de cenas. Descarte quadros em uma taxa que julgar conveniente para evidenciar o efeito de stop motion, comum em vídeos desse tipo.</p>
+
+<h3 id="implementação-1">Implementação</h3>
+
+<p>A fim de processar cada frame do vídeo e exportá-los para um novo arquivo, foram utilizadas as classes <code class="language-plaintext highlighter-rouge">VideoCapture</code> e <code class="language-plaintext highlighter-rouge">VideoWriter</code> do OpenCV. Para o vídeo resultante, além de seu nome, formato e tamanho, também foi lhe atribuido a taxa de quadros de 15 FPS, com o objetivo de recriar o efeito de stop motion.</p>
+
+<p><code class="language-plaintext highlighter-rouge">tiltshiftvideo.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">VideoCapture</span> <span class="nf">cap</span><span class="p">(</span><span class="s">"./exercises/5/norway.mp4"</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">frameWidth</span> <span class="o">=</span> <span class="n">cap</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">CAP_PROP_FRAME_WIDTH</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">frameHeight</span> <span class="o">=</span> <span class="n">cap</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">CAP_PROP_FRAME_HEIGHT</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">VideoWriter</span> <span class="nf">output</span><span class="p">(</span><span class="s">"./exercises/5/norway_output.avi"</span><span class="p">,</span>
+                        <span class="n">cv</span><span class="o">::</span><span class="n">VideoWriter</span><span class="o">::</span><span class="n">fourcc</span><span class="p">(</span><span class="sc">'M'</span><span class="p">,</span> <span class="sc">'J'</span><span class="p">,</span> <span class="sc">'P'</span><span class="p">,</span> <span class="sc">'G'</span><span class="p">),</span> <span class="mi">15</span><span class="p">,</span>
+                        <span class="n">cv</span><span class="o">::</span><span class="n">Size</span><span class="p">(</span><span class="n">frameWidth</span><span class="p">,</span> <span class="n">frameHeight</span><span class="p">));</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<p>Similarmente ao processo realizado em <code class="language-plaintext highlighter-rouge">tiltshift.cpp</code>, o filtro da média foi aplicado a cada frame. Com o intuito de intensificar o borramento, o filtro foi aplicado mais 5 vezes, como mostrado nas linhas <code class="language-plaintext highlighter-rouge">L12-L15</code>.</p>
+
+<p>Em seguida, foi efetuada a ponderação (dessa vez com valores pré-definidos, pois não há sliders) e a escrita do frame no arquivo de vídeo final.</p>
+
+<p><code class="language-plaintext highlighter-rouge">tiltshiftvideo.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">frame</span><span class="p">,</span> <span class="n">filteredFrame</span><span class="p">,</span> <span class="n">frameTop</span><span class="p">;</span>
+    <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">frame</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">cv</span><span class="o">::</span><span class="n">filter2D</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">filteredFrame</span><span class="p">,</span> <span class="n">frame</span><span class="p">.</span><span class="n">depth</span><span class="p">(),</span> <span class="n">mask</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                    <span class="mi">0</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">cv</span><span class="o">::</span><span class="n">filter2D</span><span class="p">(</span><span class="n">filteredFrame</span><span class="p">,</span> <span class="n">filteredFrame</span><span class="p">,</span> <span class="n">frame</span><span class="p">.</span><span class="n">depth</span><span class="p">(),</span> <span class="n">mask</span><span class="p">,</span>
+                        <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">filteredFrame</span><span class="p">.</span><span class="n">copyTo</span><span class="p">(</span><span class="n">frameTop</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">filteredFrame</span><span class="p">.</span><span class="n">rows</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">double</span> <span class="n">d</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">;</span>
+        <span class="kt">double</span> <span class="n">l1</span> <span class="o">=</span> <span class="o">-</span><span class="mf">200.0</span> <span class="o">+</span> <span class="n">round</span><span class="p">(</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+        <span class="kt">double</span> <span class="n">l2</span> <span class="o">=</span> <span class="mf">200.0</span> <span class="o">+</span> <span class="n">round</span><span class="p">(</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+        <span class="kt">double</span> <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">tanh</span><span class="p">((</span><span class="n">i</span> <span class="o">-</span> <span class="n">l1</span><span class="p">)</span> <span class="o">/</span> <span class="n">d</span><span class="p">)</span> <span class="o">-</span> <span class="n">tanh</span><span class="p">((</span><span class="n">i</span> <span class="o">-</span> <span class="n">l2</span><span class="p">)</span> <span class="o">/</span> <span class="n">d</span><span class="p">));</span>
+
+        <span class="n">addWeighted</span><span class="p">(</span><span class="n">frame</span><span class="p">.</span><span class="n">row</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">frameTop</span><span class="p">.</span><span class="n">row</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="n">filteredFrame</span><span class="p">.</span><span class="n">row</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="n">output</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">filteredFrame</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<h3 id="resultados-1">Resultados</h3>
+
+<p><strong>Video original</strong></p>
+<iframe width="854" height="480" src="https://www.youtube.com/embed/q54EgS8sdYQ" frameborder="0" allowfullscreen=""></iframe>
+
+<p><strong>Video com efeito Tilt-shift</strong></p>
+<iframe width="854" height="480" src="https://www.youtube.com/embed/ubLREjGYT5Y" frameborder="0" allowfullscreen=""></iframe>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 5.1]]></summary></entry><entry><title type="html">[EX-04] Filtro Laplaciano do Gaussiano</title><link href="https://neumanf.github.io/pdi/2022-05-01/filtro-laplaciano-do-gaussiano" rel="alternate" type="text/html" title="[EX-04] Filtro Laplaciano do Gaussiano" /><published>2022-05-01T09:00:00+00:00</published><updated>2022-05-01T09:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-05-01/filtro-laplaciano-do-gaussiano</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-05-01/filtro-laplaciano-do-gaussiano"><![CDATA[<h2 id="exercício-41">Exercício 4.1</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/filtroespacial.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">laplgauss.cpp</code>. O programa deverá acrescentar mais uma funcionalidade ao exemplo fornecido, permitindo que seja calculado o laplaciano do gaussiano das imagens capturadas. Compare o resultado desse filtro com a simples aplicação do filtro laplaciano.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>O filtro Laplaciano do Gaussiano pode ser obtido utilizando a seguinte máscara 5x5:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>0</th>
+      <th>0</th>
+      <th>-1</th>
+      <th>0</th>
+      <th>0</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>-1</td>
+      <td>-2</td>
+      <td>-1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>-1</td>
+      <td>-2</td>
+      <td>16</td>
+      <td>-2</td>
+      <td>-1</td>
+    </tr>
+    <tr>
+      <td>0</td>
+      <td>-1</td>
+      <td>-2</td>
+      <td>-1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>0</td>
+      <td>0</td>
+      <td>-1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Então, primeiramente criamos uma nova matriz contendo os valores da máscara, chamada <code class="language-plaintext highlighter-rouge">gaussLaplacian</code>,</p>
+
+<p><code class="language-plaintext highlighter-rouge">laplgauss.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="kt">float</span> <span class="n">media</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span>
+                    <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">,</span> <span class="mf">0.1111</span><span class="p">};</span>
+<span class="kt">float</span> <span class="n">gauss</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="mf">0.0625</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span>  <span class="mf">0.0625</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span>
+                    <span class="mf">0.125</span><span class="p">,</span>  <span class="mf">0.0625</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span>  <span class="mf">0.0625</span><span class="p">};</span>
+<span class="kt">float</span> <span class="n">horizontal</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">};</span>
+<span class="kt">float</span> <span class="n">vertical</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">};</span>
+<span class="kt">float</span> <span class="n">laplacian</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">};</span>
+<span class="kt">float</span> <span class="n">boost</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mf">5.2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">};</span>
+<span class="kt">float</span> <span class="n">gaussLaplacian</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span>  <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span>  <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+                            <span class="mi">0</span><span class="p">,</span>  <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>  <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+                            <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span>  <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">};</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<p>E adicionamos uma nova ação ao pressionar uma tecla, nesse caso, pressionando a tecla <code class="language-plaintext highlighter-rouge">o</code>. Nessa ação, é atribuida à variável <code class="language-plaintext highlighter-rouge">mask</code> uma nova matriz baseada em <code class="language-plaintext highlighter-rouge">gaussLaplacian</code>, de largura = 5 e altura = 5.</p>
+
+<p><code class="language-plaintext highlighter-rouge">laplgauss.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="k">case</span> <span class="sc">'l'</span><span class="p">:</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">CV_32F</span><span class="p">,</span> <span class="n">laplacian</span><span class="p">);</span>
+    <span class="n">printmask</span><span class="p">(</span><span class="n">mask</span><span class="p">);</span>
+    <span class="k">break</span><span class="p">;</span>
+<span class="k">case</span> <span class="sc">'b'</span><span class="p">:</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">CV_32F</span><span class="p">,</span> <span class="n">boost</span><span class="p">);</span>
+    <span class="k">break</span><span class="p">;</span>
+<span class="k">case</span> <span class="sc">'o'</span><span class="p">:</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">CV_32F</span><span class="p">,</span> <span class="n">gaussLaplacian</span><span class="p">);</span>
+    <span class="n">printmask</span><span class="p">(</span><span class="n">mask</span><span class="p">);</span>
+    <span class="k">break</span><span class="p">;</span>
+<span class="k">default</span><span class="o">:</span>
+    <span class="k">break</span><span class="p">;</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p>Após executar o programa, obtemos duas janelas, onde em uma está a imagem original e na outra, o resultado dos filtros, conforme as imagens a seguir.</p>
+
+<p><img src="../src/exercises/4/original.png" alt="Imagem original_" />
+<em>Imagem original</em></p>
+
+<p>Ao pressionar a tecla <code class="language-plaintext highlighter-rouge">l</code>, o resultado do filtro Laplaciano é:</p>
+
+<p><img src="../src/exercises/4/laplacian.png" alt="Imagem filtrada utilizando o Laplaciano" />
+<em>Imagem filtrada utilizando o Laplaciano</em></p>
+
+<p>E ao pressionar a tecla <code class="language-plaintext highlighter-rouge">o</code>, o resultado do filtro Laplaciano do Gaussiano é:</p>
+
+<p><img src="../src/exercises/4/gauss_laplacian.png" alt="Imagem filtrada utilizando o Laplaciano do Gaussiano" />
+<em>Imagem filtrada utilizando o Laplaciano do Gaussiano</em></p>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 4.1]]></summary></entry><entry><title type="html">[EX-03] Equalização e detecção de movimento</title><link href="https://neumanf.github.io/pdi/2022-04-22/equalizacao-e-deteccao-de-movimento" rel="alternate" type="text/html" title="[EX-03] Equalização e detecção de movimento" /><published>2022-04-22T09:00:00+00:00</published><updated>2022-04-22T09:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-04-22/equalizacao-e-deteccao-de-movimento</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-04-22/equalizacao-e-deteccao-de-movimento"><![CDATA[<h2 id="exercício-31">Exercício 3.1</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/histogram.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">equalize.cpp</code>. Este deverá, para cada imagem capturada, realizar a equalização do histogram antes de exibir a imagem. Teste sua implementação apontando a câmera para ambientes com iluminações variadas e observando o efeito gerado. Assuma que as imagens processadas serão em tons de cinza.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>Assumindo que as imagens processadas serão em tons de cinza, primeiro temos que convertê-las. Para isso, foi utilizado a função <code class="language-plaintext highlighter-rouge">cvtColor</code>, passando a imagem capturada e o argumento <code class="language-plaintext highlighter-rouge">cv::COLOR_BGR2GRAY</code>, sinalizando que queremos converter de BGR para escala de cinza. A partir disso, criamos uma nova matriz para armazenar a imagem equalizada, e utilizamos a função <code class="language-plaintext highlighter-rouge">equalizeHist</code>, passando a imagem de origem e a de destino, como mostrado nas linhas <code class="language-plaintext highlighter-rouge">4-6</code>. Por fim, mostramos ambas imagens em janelas separadas.</p>
+
+<p><code class="language-plaintext highlighter-rouge">equalize.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">COLOR_BGR2GRAY</span><span class="p">);</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">equalizedImage</span><span class="p">;</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">equalizeHist</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">equalizedImage</span><span class="p">);</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">"image"</span><span class="p">,</span> <span class="n">image</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">"equalized image"</span><span class="p">,</span> <span class="n">equalizedImage</span><span class="p">);</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p>Após executar o programa, obtemos duas janelas, onde em uma as imagens do vídeo não estão equalizadas e na outra estão, conforme as imagens a seguir.</p>
+
+<p><img src="../src/exercises/3/not_equalized_image.png" alt="Imagem não equalizada" />
+<em>Imagem não equalizada</em></p>
+
+<p><img src="../src/exercises/3/equalized_image.png" alt="Imagem equalizada" />
+<em>Imagem equalizada</em></p>
+
+<h2 id="exercício-32">Exercício 3.2</h2>
+
+<h3 id="objetivo-1">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/histogram.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">motiondetector.cpp</code>. Este deverá continuamente calcular o histograma da imagem (apenas uma componente de cor é suficiente) e compará-lo com o último histograma calculado. Quando a diferença entre estes ultrapassar um limiar pré-estabelecido, ative um alarme. Utilize uma função de comparação que julgar conveniente.</p>
+
+<h3 id="implementação-1">Implementação</h3>
+
+<p>Para calcular a diferença entre o histograma mais recente e seu anterior, criamos duas variáveis para guardar a soma de cada histograma, como mostrado na linha <code class="language-plaintext highlighter-rouge">1</code>. Além disso, foi criada uma nova matriz <code class="language-plaintext highlighter-rouge">lastHistImgR</code> que servirá como <em>backup</em> do canal de cor escolhido, o vermelho.</p>
+
+<p><code class="language-plaintext highlighter-rouge">motion_detector.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="kt">int</span> <span class="n">currentHistSum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">lastHistSum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="nf">histImgR</span><span class="p">(</span><span class="n">histh</span><span class="p">,</span> <span class="n">histw</span><span class="p">,</span> <span class="n">CV_8UC3</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="nf">histImgG</span><span class="p">(</span><span class="n">histh</span><span class="p">,</span> <span class="n">histw</span><span class="p">,</span> <span class="n">CV_8UC3</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="nf">histImgB</span><span class="p">(</span><span class="n">histh</span><span class="p">,</span> <span class="n">histw</span><span class="p">,</span> <span class="n">CV_8UC3</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="nf">lastHistImgR</span><span class="p">(</span><span class="n">histh</span><span class="p">,</span> <span class="n">histw</span><span class="p">,</span> <span class="n">CV_8UC3</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<p>Para cada quadro capturado, as somas são realizadas percorrendo todo o histograma — como ambos possuem o mesmo tamanho, é possível usar os valores de altura e largura pré-definidos, <code class="language-plaintext highlighter-rouge">histh</code> e <code class="language-plaintext highlighter-rouge">histw</code> — e incrementando as variáveis de soma com os valores de cada posição, como mostrado nas linhas <code class="language-plaintext highlighter-rouge">2-7</code>.</p>
+
+<p>Então, para definir se houve movimento, realizamos a diferença entre os histogramas (<code class="language-plaintext highlighter-rouge">comparationResult</code>) e definimos um limiar (<code class="language-plaintext highlighter-rouge">detectionThreshold</code>), obtido de maneira empírica. Se a diferença for maior que esse limiar, então houve movimento e exibimos o texto “Movement detected”, caso contrário, exibimos “No movement”.</p>
+
+<p>O <em>status</em> é mostrado na tela por meio da função <code class="language-plaintext highlighter-rouge">putText</code>, especificando a imagem em questão, o texto a ser exibido, sua posição, estilo da fonte e cor.</p>
+
+<p><code class="language-plaintext highlighter-rouge">motion_detector.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre></td><td class="code"><pre><span class="p">[...]</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">histh</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">histw</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">lastHistSum</span> <span class="o">+=</span> <span class="n">lastHistImgR</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+        <span class="n">currentHistSum</span> <span class="o">+=</span> <span class="n">histImgR</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">double</span> <span class="n">comparationResult</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">currentHistSum</span> <span class="o">-</span> <span class="n">lastHistSum</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">detectionThreshold</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">String</span> <span class="n">status</span> <span class="o">=</span> <span class="n">comparationResult</span> <span class="o">&gt;=</span> <span class="n">detectionThreshold</span>
+                        <span class="o">?</span> <span class="s">"Movement detected"</span>
+                        <span class="o">:</span> <span class="s">"No movement"</span><span class="p">;</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">putText</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s">"Status: "</span> <span class="o">+</span> <span class="n">status</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span>
+            <span class="n">cv</span><span class="o">::</span><span class="n">FONT_HERSHEY_PLAIN</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">250</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">250</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">cv</span><span class="o">::</span><span class="n">FILLED</span><span class="p">);</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">"image"</span><span class="p">,</span> <span class="n">image</span><span class="p">);</span>
+<span class="p">[...]</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<h3 id="resultados-1">Resultados</h3>
+
+<p><img src="../src/exercises/3/no_movement.png" alt="Imagem sem movimento na cena" />
+<em>Imagem sem movimento na cena</em></p>
+
+<p><img src="../src/exercises/3/movement_detected.png" alt="Imagem com movimento na cena" />
+<em>Imagem com movimento na cena</em></p>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 3.1]]></summary></entry><entry><title type="html">[EX-02] Processo de rotulação e algoritmo de contagem</title><link href="https://neumanf.github.io/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem" rel="alternate" type="text/html" title="[EX-02] Processo de rotulação e algoritmo de contagem" /><published>2022-04-16T09:00:00+00:00</published><updated>2022-04-16T09:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-04-16/processo-de-rotulacao-e-algoritmo-de-contagem"><![CDATA[<h2 id="exercício-21">Exercício 2.1</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Observando-se o programa <code class="language-plaintext highlighter-rouge">labeling.cpp</code> como exemplo, é possível verificar que caso existam mais de 255 objetos na cena, o processo de rotulação poderá ficar comprometido. Identifique a situação em que isso ocorre e proponha uma solução para este problema.</p>
+
+<h3 id="solução">Solução</h3>
+
+<p>O problema ocorre devido ao fato do algoritmo usar a variável que conta a quantidade de objetos, <code class="language-plaintext highlighter-rouge">nobjects</code>, como tonalidade de cinza a ser preenchida pelo <code class="language-plaintext highlighter-rouge">floodFill()</code>, assim, como 255 é o número máximo representável com 8 bits do tipo <code class="language-plaintext highlighter-rouge">uchar</code>, com uma quantidade de objetos maior que essa, o algoritmo irá gerar um resultado errôneo.</p>
+
+<p>Uma possível solução é utilizar o tipo <code class="language-plaintext highlighter-rouge">int</code>, ao invés do tipo <code class="language-plaintext highlighter-rouge">uchar</code>, assim será possível contar muito mais objetos na cena.</p>
+
+<h2 id="exercício-22">Exercício 2.2</h2>
+
+<h3 id="objetivo-1">Objetivo</h3>
+
+<p>Aprimore o algoritmo de contagem apresentado para identificar regiões com ou sem buracos internos que existam na cena. Assuma que objetos com mais de um buraco podem existir. Inclua suporte no seu algoritmo para não contar bolhas que tocam as bordas da imagem. Não se pode presumir, a priori, que elas tenham buracos ou não.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>A fim de detectar bolhas que tocam as bordas da imagem, foi percorrida toda a imagem, e caso houvesse um pixel de cor branca, simbolizando uma bolha, foi utilizado o algoritmo de <code class="language-plaintext highlighter-rouge">floodFill</code> para preencher a bolha com a cor do fundo (preto).</p>
+
+<p><code class="language-plaintext highlighter-rouge">labeling.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="c1">// remove objetos que tocam na borda</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// se o pixel não for um pixel de borda, continue</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">j</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span><span class="p">;</span>
+        <span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+
+        <span class="c1">// se houver uma bolha, a remove</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">==</span> <span class="mi">255</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">cv</span><span class="o">::</span><span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Então, resetamos o ponto que itera sobre a imagem e mudamos a cor de fundo, para que não sejam contados mais de um buraco em cada bolha. Contamos, portanto, o número de bolhas, iterando sobre a imagem e checando se o pixel possui cor branca, se sim, pintamos a bolha com uma tonalidade de cinza padrão.</p>
+
+<p><code class="language-plaintext highlighter-rouge">labeling.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="c1">// reseta o ponto</span>
+<span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// muda a cor do fundo</span>
+<span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+
+<span class="c1">// conta quantas bolhas existem</span>
+<span class="kt">int</span> <span class="n">numberOfObjects</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">==</span> <span class="mi">255</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">numberOfObjects</span><span class="o">++</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+            <span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Por fim, para contar quantas bolhas com buracos existem, percorremos a imagem e checamos se cada pixel possui cor preta e seu vizinho possui a cor de uma bolha. Se sim, uma bolha com buraco foi encontrada. Usamos o pixel em questão e seu vizinho para pintar suas áreas com cores não usadas anteriormente.</p>
+
+<p><code class="language-plaintext highlighter-rouge">labeling.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="c1">// reseta o ponto</span>
+<span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// conta quantas bolhas com buracos existem</span>
+<span class="kt">int</span> <span class="n">numberOfObjectsWithHoles</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">100</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">numberOfObjectsWithHoles</span><span class="o">++</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span><span class="p">;</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+            <span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">150</span><span class="p">);</span>
+            <span class="n">p</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+            <span class="n">floodFill</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mi">50</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p>A imagem original foi modificada, adicionando um buraco a mais a uma bolha que já havia um.</p>
+
+<p><img src="../src/exercises/2/bolhas.png" alt="Imagem original" />
+<em>Imagem original</em></p>
+
+<p>Depois de executado, obtemos</p>
+
+<p><code class="language-plaintext highlighter-rouge">output</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>256x256
+a figura tem 21 bolhas e 7 bolhas com buracos.
+</code></pre></div></div>
+
+<p><img src="../src/exercises/2/output_after_border_removal.png" alt="Imagem após remover as bolhas das bordas" />
+<em>Imagem após remover as bolhas das bordas</em></p>
+
+<p><img src="../src/exercises/2/output.png" alt="Imagem resultante" />
+<em>Imagem resultante</em></p>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 2.1]]></summary></entry><entry><title type="html">[EX-01] Região negativa e troca de regiões</title><link href="https://neumanf.github.io/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes" rel="alternate" type="text/html" title="[EX-01] Região negativa e troca de regiões" /><published>2022-04-15T15:00:00+00:00</published><updated>2022-04-15T15:00:00+00:00</updated><id>https://neumanf.github.io/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes</id><content type="html" xml:base="https://neumanf.github.io/pdi/2022-04-15/regiao-negativa-e-troca-de-regioes"><![CDATA[<h2 id="exercício-11">Exercício 1.1</h2>
+
+<h3 id="objetivo">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/pixels.cpp</code> como referência, implemente um programa regions.cpp. Esse programa deverá solicitar ao usuário as coordenadas de dois pontos P1 e P2 localizados dentro dos limites do tamanho da imagem e exibir que lhe for fornecida. Entretanto, a região definida pelo retângulo de vértices opostos definidos pelos pontos P1 e P2 será exibida com o negativo da imagem na região correspondente.</p>
+
+<h3 id="implementação">Implementação</h3>
+
+<p>Para os testes, iremos utilizar uma imagem de resolução 800x600 denominada <code class="language-plaintext highlighter-rouge">mountain.png</code>. Primeiramente, precisamos ler a imagem do disco em modo de escala de cinza, para isso, utilizamos o método <code class="language-plaintext highlighter-rouge">imread()</code> do OpenCV com o argumento  <code class="language-plaintext highlighter-rouge">cv::IMREAD_GRAYSCALE</code>. Em seguida, verificamos se a imagem foi carregada corretamente, e caso não, retornamos um erro. Se a operação foi executada com sucesso, entretando, seguimos com a execução do programa, obtemos as dimensões da imagem e a armazenamos em uma variável chamada <code class="language-plaintext highlighter-rouge">imageSize</code>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">regions.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">image</span> <span class="o">=</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">imread</span><span class="p">(</span><span class="s">"../assets/images/mountain.png"</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">IMREAD_GRAYSCALE</span><span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">image</span><span class="p">.</span><span class="n">data</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Error while opening the image.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">Size</span> <span class="n">imageSize</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Então, obtemos os pontos fornecidos pelo usuário, através da função <code class="language-plaintext highlighter-rouge">getPointCoordinates()</code> e os validamos, com <code class="language-plaintext highlighter-rouge">isAValidPoint()</code>. A primeira função, utiliza <code class="language-plaintext highlighter-rouge">std::cout</code> e <code class="language-plaintext highlighter-rouge">std::cin</code> para printar e coletar informações do usuário no terminal, guardando-as em uma variável do tipo <code class="language-plaintext highlighter-rouge">Point</code>, as quais guarda as posições x e y. Já a segunda função, verifica se o ponto em questão está dentro do limite das dimensões da imagem, especificado pela variável <code class="language-plaintext highlighter-rouge">imageSize</code>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">regions.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="k">struct</span> <span class="nc">Point</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">getPointCoordinates</span><span class="p">(</span><span class="s">"1"</span><span class="p">);</span>
+<span class="k">struct</span> <span class="nc">Point</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">getPointCoordinates</span><span class="p">(</span><span class="s">"2"</span><span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">isAValidPoint</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">imageSize</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Invalid coordinates for point P1.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">isAValidPoint</span><span class="p">(</span><span class="n">p2</span><span class="p">,</span> <span class="n">imageSize</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Invalid coordinates for point P2.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Após isso, percorremos a matrix da imagem horizontalmente e verticalmente, de acordo com os pontos fornecidos, e para cada ponto, substituimos seu valor pelo seu complemento, com base no total de 255 tons que podemos representar utilizando 8 bits. Por fim, usamos <code class="language-plaintext highlighter-rouge">imshow()</code> para mostrar a imagem resultante.</p>
+
+<p><code class="language-plaintext highlighter-rouge">regions.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">p1</span><span class="p">.</span><span class="n">x</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">p2</span><span class="p">.</span><span class="n">x</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="n">p1</span><span class="p">.</span><span class="n">y</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">p2</span><span class="p">.</span><span class="n">y</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span> <span class="mi">255</span> <span class="o">-</span> <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">"window"</span><span class="p">,</span> <span class="n">image</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">();</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados">Resultados</h3>
+
+<p><img src="../assets/images/mountain.png" alt="Imagem original" />
+<em>Imagem original (mountain.png)</em></p>
+
+<p>Utilizando os valores</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>make regions <span class="o">&amp;&amp;</span> ./regions
+
+<span class="o">&gt;</span> Point 1 coordinates
+x: 0
+y: 0
+
+<span class="o">&gt;</span> Point 2 coordinates
+x: 500
+y: 700
+</code></pre></div></div>
+
+<p>Obtemos a seguinte imagem:</p>
+
+<p><img src="../src/exercises/1/output_regions.png" alt="Imagem processada" />
+<em>Imagem processada</em></p>
+
+<h2 id="exercício-12">Exercício 1.2</h2>
+
+<h3 id="objetivo-1">Objetivo</h3>
+
+<p>Utilizando o programa <code class="language-plaintext highlighter-rouge">exemplos/pixels.cpp</code> como referência, implemente um programa <code class="language-plaintext highlighter-rouge">trocaregioes.cpp</code>. Seu programa deverá trocar os quadrantes em diagonal na imagem. Explore o uso da classe Mat e seus construtores para criar as regiões que serão trocadas.</p>
+
+<h3 id="implementação-1">Implementação</h3>
+
+<p>Assim como no exercício 1.1, primeiramente lemos a imagem em disco, verificamos se a operação foi executada corretamente e obtemos suas dimensões.</p>
+
+<p><code class="language-plaintext highlighter-rouge">trocaregioes.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">image</span> <span class="o">=</span>
+    <span class="n">cv</span><span class="o">::</span><span class="n">imread</span><span class="p">(</span><span class="s">"../assets/images/mountain.png"</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">IMREAD_GRAYSCALE</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="n">imageWidth</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">width</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">imageHeight</span> <span class="o">=</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">().</span><span class="n">height</span><span class="p">;</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">image</span><span class="p">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Error while opening the image.</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<p>Então, geramos uma nova matriz composta de zeros, de mesma dimensão e tipo da imagem fornecida, por meio do método <code class="language-plaintext highlighter-rouge">zeros()</code>. De posse dela, percorremos cada quadrante da imagem original, com base em sua altura e largura, e atribuimos cada valor ao quadrante inverso na nova matriz <code class="language-plaintext highlighter-rouge">newImage</code>.</p>
+
+<p>Os quadrantes podem ser definidos dividindo a imagem 4 partes, levando em consideração os pontos <code class="language-plaintext highlighter-rouge">(0,0)</code>, <code class="language-plaintext highlighter-rouge">(largura/2, altura/2)</code>, <code class="language-plaintext highlighter-rouge">(largura, altura)</code> e suas variações.</p>
+
+<p><code class="language-plaintext highlighter-rouge">trocaregioes.cpp</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="p">[...]</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">newImage</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span><span class="n">imageHeight</span><span class="p">,</span> <span class="n">imageWidth</span><span class="p">,</span> <span class="n">CV_8UC1</span><span class="p">);</span>
+
+<span class="c1">// First quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Second quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Third quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Forth quadrant</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">imageHeight</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">imageWidth</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">newImage</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">imageHeight</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">j</span> <span class="o">-</span> <span class="n">imageWidth</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">=</span>
+            <span class="n">image</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">[...]</span></code></pre></figure>
+
+<h3 id="resultados-1">Resultados</h3>
+
+<p><img src="../assets/images/mountain.png" alt="Imagem original" />
+<em>Imagem original (mountain.png)</em></p>
+
+<p>Após a execução do programa, obtemos a seguinte imagem:</p>
+
+<p><img src="../src/exercises/1/output_trocaregioes.png" alt="Imagem processada" />
+<em>Imagem processada</em></p>]]></content><author><name>neumanf</name></author><category term="pdi" /><summary type="html"><![CDATA[Exercício 1.1]]></summary></entry></feed>

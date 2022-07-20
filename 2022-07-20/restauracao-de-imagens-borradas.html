@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Restauração de Imagens Borradas | Processamento Digital de Sinais</title>
+<meta name="generator" content="Jekyll v4.2.2" />
+<meta property="og:title" content="Restauração de Imagens Borradas" />
+<meta name="author" content="neumanf" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Embasamento teórico" />
+<meta property="og:description" content="Embasamento teórico" />
+<link rel="canonical" href="https://neumanf.github.io/pdi/2022-07-20/restauracao-de-imagens-borradas" />
+<meta property="og:url" content="https://neumanf.github.io/pdi/2022-07-20/restauracao-de-imagens-borradas" />
+<meta property="og:site_name" content="Processamento Digital de Sinais" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-07-20T12:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Restauração de Imagens Borradas" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"neumanf"},"dateModified":"2022-07-20T12:00:00+00:00","datePublished":"2022-07-20T12:00:00+00:00","description":"Embasamento teórico","headline":"Restauração de Imagens Borradas","mainEntityOfPage":{"@type":"WebPage","@id":"https://neumanf.github.io/pdi/2022-07-20/restauracao-de-imagens-borradas"},"url":"https://neumanf.github.io/pdi/2022-07-20/restauracao-de-imagens-borradas"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/pdi/assets/main.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Libre+Baskerville:400,400i,700">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/pdi/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/pdi/assets/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/pdi/assets/apple-touch-icon.png">
+
+  <!-- RSS -->
+  <link type="application/atom+xml" rel="alternate" href="https://neumanf.github.io/pdi/feed.xml" title="Processamento Digital de Sinais" />
+
+  <!-- Google Analytics-->
+  
+</head>
+
+
+  <body>
+
+    <nav class="nav">
+  <div class="nav-container">
+    <a href="/pdi/">
+      <h2 class="nav-title">Processamento Digital de Sinais</h2>
+    </a>
+    <ul>
+      <li><a href="/pdi/">Posts</a></li>
+      <li><a href="/pdi/tags">Tags</a></li>
+      <li><a href="/pdi/about">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+
+    <main>
+      <div class="post">
+  <div class="post-info">
+    <span>Written by</span>
+    
+        neumanf
+    
+
+    
+      <br>
+      <span>on&nbsp;</span><time datetime="2022-07-20 12:00:00 +0000">July 20, 2022</time>
+    
+  </div>
+
+  <h1 class="post-title">Restauração de Imagens Borradas</h1>
+  <div class="post-line"></div>
+
+  <h2 id="embasamento-teórico">Embasamento teórico</h2>
+
+<p>Em uma imagem desfocada, todas as informações estão redistribuídas de acordo com algumas regras e podem ser restauradas admitindo algumas suposições. Como a maioria dos ruídos periódicos, estes são melhor tratados utilizando o domínio do frequência. Para tratá-los, precisamos de um filtro que faça a remoção do borramento (Hw) e do espectro de frequência da imagem borrada (S), conforme a seguinte equação:</p>
+
+<p style="color:gray; font-size: 130%; text-align: center;"><strong>U’ = Hw ⋅ S</strong> (I)</p>
+
+<p>O espectro da imagem degradada pode ser descrito como o produto da resposta em frequência da Função de Dispersão de Ponto (PSF, do inglês), H, com o espectro da imagem original, sem borramento, U, acrescido do espectro do ruído presente, N.</p>
+
+<p style="color:gray; font-size: 130%; text-align: center;"><strong>S = H⋅U+N</strong> (II)</p>
+
+<p>A PSF representa a resposta ao impulso de um sistema óptico focado. Para imagens homogeneamente desfocadas, a PSF circular consegue gerar uma boa aproximação para esse tipo de distorção. Dessa forma, para adequá-la precisamos apenas de um valor para seu raio ou diametro.</p>
+
+<p><img src="../assets/images/psf.png" alt="PSF" />
+<em>Figura 1: Formação de imagem em um microscópio confocal a partir da convolução das fontes de luz reais com a PSF</em></p>
+
+<p>Um dos filtros mais utilizados para esse tipo de tarefa é o Filtro de Wiener. A deconvolução de Wiener é uma aplicação do filtro de Wiener aos problemas de ruído inerentes à deconvolução. Ele funciona no domínio da frequência, tentando minimizar o impacto do ruído deconvoluído em frequências que possuem uma má relação sinal-ruído, e pode ser descrito com base no sistema ou imagem original e a razão sinal-ruído (SNR, do inglês).</p>
+
+<p><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/a867fc7cd7c4e2e926de891c526c21cc5244f796" alt="Wiener" />
+<em>Figura 2: Filtro de Wiener aplicado à deconvolução</em></p>
+
+<p>Por fim, de posse do filtro de deconvolução e do espectro da imagem borrada, podemos utilizar a equação (I).</p>
+
+<h2 id="aplicação">Aplicação</h2>
+
+<h3 id="visão-geral">Visão geral</h3>
+
+<p>O projeto é dividido em duas partes: WebApp (construído em HTML, CSS e JS) e API (construída em Python). O WebApp é responsável tanto pela exibição e controle da interface de usuário, como também pelo envio e recebimento dos dados da API. A API  recebe a requisição, processa a imagem de acordo com os parâmetros fornecidos e retorna uma nova imagem, que será posteriormente exibida na interface.</p>
+
+<p>A comunicação ocorre via requisições HTTP. A interface envia uma requisição do tipo POST com a imagem original, fornecida pelo usuário, e os parâmetros necessários para o filtro em questão. Após o processamento, a API retorna a imagem processada.</p>
+
+<p><img src="../assets/images/communication.png" alt="Estrutura do projeto" />
+<em>Figura 3: Comunicação entre a interface e a API</em></p>
+
+<h3 id="filtragem">Filtragem</h3>
+
+<p>A filtragem é realizada pela classe <code class="language-plaintext highlighter-rouge">ImageDeblur</code>. Nela, são passados os parâmetros do filtro pelo seu construtor, e a imagem em binário, pelo método <code class="language-plaintext highlighter-rouge">deblur</code>. Este método utiliza-se da classe auxiliar <code class="language-plaintext highlighter-rouge">ImageConverter</code> tanto para converter de bytes para imagem (isto é, para uma matriz processável), como de imagem para bytes, para ser enviada à interface, ao final do processo.</p>
+
+<p>Inicialmente, para obter a imagem no domínio da frequência, ela é normalizada, suas bordas são borradas, com o auxílio de um filtro Gaussiano, e uma nova imagem é gerada a partir do cálculo da Transformada Discreta de Fourier (DFT). A aplicação possui dois modos: para imagens fora de foco e imagens com borrão de movimento. Para distinguir dos dois modos, é analisado se foi fornecido o parâmetro de ângulo do movimento, caso verdadeiro, este ângulo é convertido de graus para radianos e é chamado o método <code class="language-plaintext highlighter-rouge">motion_kernel</code>, caso contrário, o método <code class="language-plaintext highlighter-rouge">defocus_kernel</code> é chamado. Ambos os métodos geram uma PSF, que será utilizada posteriormente. A Figura 4 mostra um exemplo de PSF circular gerada pelo segundo método.</p>
+
+<p><img src="https://docs.opencv.org/4.6.0/psf.png" alt="PSF Circular" />
+<em>Figura 4: Exemplo de PSF circular gerada por <code class="language-plaintext highlighter-rouge">defocus_kernel</code></em></p>
+
+<p>Em seguida, devido ao tamanho da PSF, é realizado um <em>padding</em>, preenchendo suas bordas com zeros, para que seja calculada sua DFT. Por fim, o filtro de Wiener é calculado e o multiplicamos com o espectro da imagem original, conforme visto na equação (I).</p>
+
+<p><code class="language-plaintext highlighter-rouge">deblur.py</code></p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">class</span> <span class="nc">ImageDeblur</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">snr</span> <span class="o">=</span> <span class="n">snr</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span>
+
+    <span class="p">[...]</span>
+
+    <span class="k">def</span> <span class="nf">defocus_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">sz</span><span class="o">=</span><span class="mi">65</span><span class="p">):</span>
+        <span class="n">kern</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">sz</span><span class="p">,</span> <span class="n">sz</span><span class="p">),</span> <span class="n">np</span><span class="p">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">cv</span><span class="p">.</span><span class="n">circle</span><span class="p">(</span><span class="n">kern</span><span class="p">,</span> <span class="p">(</span><span class="n">sz</span><span class="p">,</span> <span class="n">sz</span><span class="p">),</span> <span class="n">d</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">cv</span><span class="p">.</span><span class="n">LINE_AA</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">kern</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">float32</span><span class="p">(</span><span class="n">kern</span><span class="p">)</span> <span class="o">/</span> <span class="mf">255.0</span>
+        <span class="k">return</span> <span class="n">kern</span>
+
+    <span class="k">def</span> <span class="nf">deblur</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">ImageConverter</span><span class="p">.</span><span class="n">from_bytes_to_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">float32</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="o">/</span><span class="mf">255.0</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">blur_edge</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">IMG</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">dft</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv</span><span class="p">.</span><span class="n">DFT_COMPLEX_OUTPUT</span><span class="p">)</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">d</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.1</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">snr</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="p">.</span><span class="n">angle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">angle</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">angle</span><span class="p">)</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">motion_kernel</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">psf</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">defocus_kernel</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+
+        <span class="n">psf</span> <span class="o">/=</span> <span class="n">psf</span><span class="p">.</span><span class="nb">sum</span><span class="p">()</span>
+        <span class="n">psf_pad</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">kh</span><span class="p">,</span> <span class="n">kw</span> <span class="o">=</span> <span class="n">psf</span><span class="p">.</span><span class="n">shape</span>
+        <span class="n">psf_pad</span><span class="p">[:</span><span class="n">kh</span><span class="p">,</span> <span class="p">:</span><span class="n">kw</span><span class="p">]</span> <span class="o">=</span> <span class="n">psf</span>
+        <span class="n">PSF</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">dft</span><span class="p">(</span><span class="n">psf_pad</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv</span><span class="p">.</span><span class="n">DFT_COMPLEX_OUTPUT</span><span class="p">,</span> <span class="n">nonzeroRows</span><span class="o">=</span><span class="n">kh</span><span class="p">)</span>
+        <span class="n">PSF2</span> <span class="o">=</span> <span class="p">(</span><span class="n">PSF</span><span class="o">**</span><span class="mi">2</span><span class="p">).</span><span class="nb">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">iPSF</span> <span class="o">=</span> <span class="n">PSF</span> <span class="o">/</span> <span class="p">(</span><span class="n">PSF2</span> <span class="o">+</span> <span class="n">noise</span><span class="p">)[...,</span> <span class="n">np</span><span class="p">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">RES</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">mulSpectrums</span><span class="p">(</span><span class="n">IMG</span><span class="p">,</span> <span class="n">iPSF</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">cv</span><span class="p">.</span><span class="n">idft</span><span class="p">(</span><span class="n">RES</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv</span><span class="p">.</span><span class="n">DFT_SCALE</span> <span class="o">|</span> <span class="n">cv</span><span class="p">.</span><span class="n">DFT_REAL_OUTPUT</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">roll</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="o">-</span><span class="n">kh</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">roll</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="o">-</span><span class="n">kw</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">ImageConverter</span><span class="p">.</span><span class="n">from_image_to_bytes</span><span class="p">(</span><span class="mi">255</span><span class="o">*</span><span class="n">res</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">res</span></code></pre></figure>
+
+<h2 id="resultados">Resultados</h2>
+
+<p>Ao escolher uma imagem fora de foco que possui vários textos, após ajuste dos parâmetros e tratamento, podemos enxergar o que está escrito, como mostrado na Figura 5.</p>
+
+<p><img src="../assets/images/result.png" alt="Resultado" />
+<em>Figura 5: Resultado da restauração</em></p>
+
+<p><strong>Repositório da aplicação:</strong> <a href="https://github.com/neumanf/image-deblur-tool">neumanf/image-deblur-tool</a></p>
+
+<p><strong>Acesso à aplicação no ar:</strong> <a href="https://image-deblur-tool.vercel.app/">image-deblur-tool.vercel.app</a></p>
+
+<h2 id="referências">Referências</h2>
+
+<ul>
+  <li>http://yuzhikov.com/articles/BlurredImagesRestoration1.htm</li>
+  <li>https://docs.opencv.org/4.6.0/de/d3c/tutorial_out_of_focus_deblur_filter.html</li>
+  <li>https://github.com/opencv/opencv/blob/4.x/samples/python/deconvolution.py</li>
+  <li>https://en.wikipedia.org/wiki/Point_spread_function</li>
+  <li>https://en.wikipedia.org/wiki/Wiener_deconvolution</li>
+</ul>
+
+</div>
+
+
+
+<div class="pagination">
+  
+  
+    <a href="/pdi/2022-06-11/kmeans" class="right arrow">&#8594;</a>
+  
+
+  <a href="#" class="top">Top</a>
+</div>
+    </main>
+
+    <footer>
+  <span>
+    &copy; <time datetime="2022-07-20 22:34:23 +0000">2022</time> . Made with Jekyll using the <a href="https://github.com/chesterhow/tale/">Tale</a> theme.
+  </span>
+</footer>
+
+  </body>
+</html>
